@@ -1,8 +1,7 @@
-"""Integration checks require freshly generated local, trusted model artifacts."""
+"""Inference initializes verified public resources without serialized model files."""
 import json
 from pathlib import Path
 
-import joblib
 import numpy as np
 import pytest
 
@@ -18,8 +17,6 @@ def values(stage):
 
 @pytest.fixture(scope="module")
 def artifacts():
-    if not all((ROOT / "models" / f"{stage}.joblib").exists() for stage in FEATURES):
-        pytest.skip("Train artifacts first: python -m src.train")
     return ROOT / "models"
 
 
@@ -65,11 +62,11 @@ def test_missing_artifact_fails_clearly(tmp_path):
 
 @pytest.mark.integration
 def test_incompatible_feature_schema_is_rejected(artifacts, tmp_path):
+    from src.predict import _validate_bundle
     bundle = dict(load_bundle("early", artifacts))
     bundle["features"] = ["G3"]
-    joblib.dump(bundle, tmp_path / "early.joblib")
     with pytest.raises((ValueError, RuntimeError)):
-        load_bundle("early", tmp_path)
+        _validate_bundle(bundle, "early")
 
 
 @pytest.mark.integration

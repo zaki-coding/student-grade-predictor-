@@ -5,3 +5,7 @@
 reports/*.json text eol=lf
 reports/*.csv text eol=lf
 reports/*.md text eol=lf
+# Public source bytes are verified against UCI's original checksum.
+resources/student-por.csv -text
+resources/*.json text eol=lf
+resources/release-predictions.csv text eol=lf

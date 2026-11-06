@@ -8,7 +8,10 @@ font = "sans serif"
 
 [server]
 headless = true
-address = "127.0.0.1"
+maxUploadSize = 1
 
 [browser]
 gatherUsageStats = false
+
+[client]
+showErrorDetails = "none"

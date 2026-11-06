@@ -3,7 +3,6 @@ import copy
 import json
 from pathlib import Path
 
-import joblib
 import numpy as np
 import pandas as pd
 import pytest
@@ -61,8 +60,6 @@ def test_novelty_reference_fit_is_training_only_and_assessment_does_not_refit():
 @pytest.mark.parametrize("stage", ["early", "updated"])
 def test_prediction_exposes_model_bound_evaluation_and_missingness_warning(stage):
     from src.predict import load_bundle, predict
-    if not (ROOT / "models" / f"{stage}.joblib").exists():
-        pytest.skip("Train models before integration tests")
     bundle = load_bundle(stage, ROOT / "models")
     result = predict(profile(stage), stage, ROOT / "models")
     assert result["evaluation"] == bundle["evaluation"]
@@ -101,15 +98,15 @@ def test_stage_baselines_and_interval_diagnostics_are_real_audit_measurements():
         for group in result["interval_diagnostics"]["groups"].values():
             assert 0 <= group["covered"] <= group["n"] <= 130
         bundle = load_bundle(stage, ROOT / "models")
-        assert bundle["evaluation"]["test"] == result["test"]
+        # Frozen release values and regenerated research reports may differ only
+        # in platform-level floating point rounding. Preserve numerical parity.
+        assert bundle["evaluation"]["test"] == pytest.approx(result["test"], rel=0, abs=1e-9)
 
 
 @pytest.mark.integration
 @pytest.mark.parametrize("inconsistency", ["evaluation_radius", "nonfinite_reference", "invalid_nominal", "old_version"])
 def test_inconsistent_artifact_metadata_rejected_before_inference(tmp_path, inconsistency):
     from src.predict import load_bundle
-    if not (ROOT / "models" / "updated.joblib").exists():
-        pytest.skip("Train models before integration tests")
     bundle = copy.deepcopy(load_bundle("updated", ROOT / "models"))
     if inconsistency == "evaluation_radius":
         bundle["evaluation"]["interval_radius"] += 1
@@ -119,6 +116,6 @@ def test_inconsistent_artifact_metadata_rejected_before_inference(tmp_path, inco
         bundle["nominal_coverage"] = 0
     else:
         bundle["artifact_version"] = 1
-    joblib.dump(bundle, tmp_path / "updated.joblib")
+    from src.predict import _validate_bundle
     with pytest.raises(ValueError):
-        load_bundle("updated", tmp_path)
+        _validate_bundle(bundle, "updated")

@@ -2,8 +2,6 @@
 from copy import deepcopy
 from numbers import Real
 from pathlib import Path
-import pickle
-import joblib
 import numpy as np
 import sklearn
 from src.data import ROOT
@@ -73,17 +71,22 @@ def _validate_bundle(bundle, stage):
 
 
 def load_bundle(stage: str, model_dir=Path('models')) -> dict:
-    """Only load locally trained artifacts you trust: joblib/pickle can execute code."""
+    """Return an isolated, verified in-memory model; never load serialized files.
+
+    ``model_dir`` remains for API compatibility. Only the registered default is
+    allowed; arbitrary paths are rejected without inspecting/deserializing them.
+    Research .joblib exports produced by src.train are not app dependencies.
+    """
     validate_stage(stage)
-    path = Path(model_dir)/f'{stage}.joblib'
-    if not path.exists() and Path(model_dir) == Path('models'):
-        path = ROOT/path
-    if not path.exists():
-        raise FileNotFoundError('Model unavailable. Run python -m src.train from the project root.')
     try:
-        return _validate_bundle(joblib.load(path), stage)
-    except (EOFError, KeyError, TypeError, AttributeError, pickle.UnpicklingError) as exc:
-        raise ValueError('Unreadable or inconsistent model artifact; retrain using python -m src.train.') from exc
+        requested = Path(model_dir)
+        registered = requested == Path('models') or requested.resolve() == (ROOT/'models').resolve()
+    except (TypeError, ValueError, OSError):
+        registered = False
+    if not registered:
+        raise ValueError('Unregistered model location: serialized model files are never loaded by this application.')
+    from src.provisioning import prepare_models
+    return _validate_bundle(prepare_models()[stage], stage)
 
 
 def predict(values: dict, stage: str, model_dir=Path('models')) -> dict:
@@ -97,7 +100,8 @@ def predict(values: dict, stage: str, model_dir=Path('models')) -> dict:
     return {'prediction': point, 'lower': max(0., point-radius), 'upper': min(20., point+radius),
         'model_name': bundle['model_name'], 'stage': stage, 'active_features': list(bundle['active_features']),
         'warnings': warnings, 'reliability': reliability, 'evaluation': deepcopy(bundle['evaluation']),
-        'nominal_coverage': bundle['nominal_coverage'], 'evaluation_context': bundle['evaluation_context']}
+        'nominal_coverage': bundle['nominal_coverage'], 'evaluation_context': bundle['evaluation_context'],
+        'model_version': bundle['model_version'], 'provisioning_checksum': bundle['provisioning_checksum']}
 
 
 def compare_scenario(original: dict, adjusted: dict, stage: str, model_dir=Path('models')) -> dict:

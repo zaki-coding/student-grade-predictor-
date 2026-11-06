@@ -26,3 +26,9 @@ Thumbs.db
 student-success-courses*.json
 student-success-grade-summary*.csv
 student-success-*-prediction*.md
+# Isolated release verification checkouts/virtual environments.
+.release-check/
+.pytest_release*/
+.pytest_provisioning_tmp/
+# Local coordination plan; not part of the public portfolio source.
+/docs/release-contract.md

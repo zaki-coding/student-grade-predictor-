@@ -70,8 +70,6 @@ def test_assessment_edits_save_repeatedly_and_update_exact_contribution():
 
 @pytest.mark.integration
 def test_prediction_submit_and_scenario_match_saved_inputs():
-    if not (ROOT / "models" / "updated.joblib").exists():
-        pytest.skip("Train artifacts first: python -m src.train")
     app = AppTest.from_file(str(ROOT / "app" / "Home.py"), default_timeout=30).run()
     app.radio(key="page").set_value("AI Predictor").run()
     app.radio(key="prediction_stage").set_value("updated").run()

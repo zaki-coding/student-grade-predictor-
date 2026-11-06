@@ -42,8 +42,6 @@ def test_target_and_threshold_settings_survive_navigation_and_change_exact_proje
 
 @pytest.mark.integration
 def test_prediction_result_discloses_stage_scale_and_model_bound_metrics():
-    if not (ROOT / "models" / "updated.joblib").exists():
-        pytest.skip("Train artifacts first")
     app = AppTest.from_file(str(ROOT / "app" / "Home.py"), default_timeout=30).run()
     app.radio(key="page").set_value("AI Predictor").run()
     app.radio(key="prediction_stage").set_value("updated").run()

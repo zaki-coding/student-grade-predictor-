@@ -1,3 +1,5 @@
+> Release provisioning note: the application uses verified in-memory model preparation, never serialized model loading. Statistical methods and reported measurements remain unchanged. See [deployment notes](../docs/deployment.md).
+
 # Modeling methodology and model card — iteration 2
 
 ## Scope, data and timing

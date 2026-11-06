@@ -1,0 +1,25 @@
+{
+  "release_version": "student-success-ai-1.0.0-iteration2",
+  "schema_version": 1,
+  "artifact_version": 2,
+  "sklearn_version": "1.8.0",
+  "seed": 42,
+  "selected_models": {
+    "early": "LinearRegression",
+    "updated": "G2Persistence"
+  },
+  "dataset_sha256": "a7594a11d7771c0efe1a740824e0e833da9c4cad07c39a9766a874575563fb3f",
+  "metrics_sha256": "ec9116b4d66d19b47fe6ceccff41d5e934fb8df0f42d63c9097abb0297412096",
+  "predictions_sha256": "737427c5bb7e503cd6b30415830e1b57da32df4bbe409201cc27bc54097b824e",
+  "recipe_sha256": {
+    "src/train.py": "f1eb00c6614e0cd71540dc0c413ffce10f30f46a71c2b4c70197a7fca7bc8d88",
+    "src/data.py": "88cf46975297fa6cf4dc72f11e3c686c03649440ed9f2a636a4a10ae63145faf",
+    "src/schema.py": "0665f740b087c9731a216e9554de0098b484af313888c5fced1922407999f582",
+    "src/reliability.py": "60cc003b43cf9f95222d3267a168b174fb55d39971ccf3b29f850e6251589217",
+    "src/estimators.py": "1dce903c7d12b03c48cbd170fc09df395830973d5eaece7162741e85cabbd0ee"
+  },
+  "approved_snapshot_origins": {
+    "release-metrics.json": "reports/metrics.json at73083aa",
+    "release-predictions.csv": "reports/predictions.csv at73083aa"
+  }
+}
