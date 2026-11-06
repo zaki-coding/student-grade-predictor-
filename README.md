@@ -4,6 +4,8 @@
 
 A Streamlit application that separates exact course-grade calculations, statistical grade estimates, and hypothetical scenarios. Built as a reproducible data-science portfolio project with transparent baselines and uncertainty.
 
+**[Open the hosted demo](https://student-success-ai-zaki.streamlit.app/)** · Streamlit Community Cloud · **Access currently restricted** (public access not yet confirmed)
+
 [GitHub Actions](https://github.com/zaki-coding/student-grade-predictor-/actions/workflows/quality.yml) · [MIT license](LICENSE) · [Model methodology](reports/methodology.md) · [Deployment checklist](docs/deployment.md) · [Privacy](docs/privacy.md)
 
 ![Student Success AI one-click synthetic demo workspace](docs/screenshots/release/demo.jpg)
@@ -12,7 +14,9 @@ A Streamlit application that separates exact course-grade calculations, statisti
 
 ## Hosted application
 
-**Not deployed yet.** The eventual hosted application URL will be added here after the owner approves deployment. Repository visibility and public hosting are separate decisions; this release-preparation branch does not make either change.
+**Deployed:** [student-success-ai-zaki.streamlit.app](https://student-success-ai-zaki.streamlit.app/) using `main`, `app/Home.py` and Python 3.13.18. The Streamlit app was last confirmed as **available only to specific people**; visitors may be asked to sign in or request access. The GitHub repository remains private. Deploying the app does **not** automatically make the app or its source public.
+
+The hosted demo dashboard, calculator, early and updated predictions, What-If Lab, JSON/CSV downloads and Markdown prediction-report download were tested successfully. The optional Plotly chart-to-PNG download could not be confirmed in browser automation; that is **unverified**, not a proven application defect. See [deployment and public-release checklist](docs/deployment.md).
 
 ## Features
 
@@ -85,7 +89,7 @@ The full experiment is separate from app initialization:
 
 Training compares the original candidates and Ridge grid, regenerates numerical reports, and writes ignored research `.joblib` files. Those files are never loaded by the application. Generated experiment reports use canonical LF line endings. The recorded [seven-report reproducibility comparison](reports/reproducibility-iteration2.json) belongs to the documented experiment environment; small numerical/version differences on other systems are possible.
 
-The approved base commit [`73083aa`](https://github.com/zaki-coding/student-grade-predictor-/commit/73083aa86a51c10c1e97eb4f77d635a6ac561b0f) passed all four [Windows/Ubuntu, Python 3.11/3.13 CI jobs](https://github.com/zaki-coding/student-grade-predictor-/actions/runs/42248590363), with **130 local tests** before release preparation. Release-branch validation and clean-start results are recorded separately in [release validation](docs/release-validation.md). CI now exercises the full cold-checkout suite before the separate research-training step. Historical results are not claims that a hosted deployment succeeded.
+The release merge commit [`e4578a6`](https://github.com/zaki-coding/student-grade-predictor-/commit/e4578a6fdc51463e1d5ff73bb5d50a5bf24333b9) passed **all four** [Windows/Ubuntu, Python 3.11/3.13 CI jobs](https://github.com/zaki-coding/student-grade-predictor-/actions/runs/42296289289). The release preparation recorded **163 passing tests** in both working and clean-install environments; see [release validation](docs/release-validation.md). CI exercises the cold-checkout suite before the separate research-training step. The hosted app has also been tested with synthetic demo data, but these checks do not establish model validity for new student populations.
 
 ## Privacy and saved work
 
@@ -103,6 +107,6 @@ Workspace uploads are limited to **1 MB**, validated before replacing the curren
 
 [Model audit view](docs/screenshots/iteration2/insights.jpg) · [Mobile view](docs/screenshots/iteration2/mobile.jpg)
 
-The application is prepared for a clearly labeled educational portfolio demonstration, not validated personal academic forecasting. The [deployment checklist](docs/deployment.md) keeps public visibility and hosting behind owner approval. **Renaming the repository to `student-success-ai` is recommended** for consistency with the product name; it has not been renamed automatically.
+The application is hosted as an educational portfolio demonstration, not validated personal academic forecasting. The [deployment checklist](docs/deployment.md) describes the remaining public-access steps; the app and repository were last confirmed private. **Renaming the repository to `student-success-ai` remains optional** and has not been performed.
 
 Code: [MIT](LICENSE). Data and derived reports: CC BY 4.0 with [third-party notices](docs/third-party-notices.md). Full study scheduling, new datasets, and monitoring remain future work.
