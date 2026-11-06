@@ -18,6 +18,9 @@ jobs:
           python-version: ${{ matrix.python }}
           cache: pip
       - run: python -m pip install -r requirements.txt
-      - run: python -m src.train
-      - run: python -m pytest
+      - name: Cold-checkout full suite (no generated models or research dataset)
+        run: python -m pytest
+      - name: Reproduce the research experiment separately
+        run: python -m src.train
       - run: python -m compileall -q src app
+      - run: python -m pip check

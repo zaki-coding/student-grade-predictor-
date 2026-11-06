@@ -2,54 +2,54 @@
 
 **Academic Performance Prediction & Analysis Platform**
 
-A local Streamlit workspace for exact course-grade arithmetic, transparent statistical estimates, and hypothetical model comparisons. This project emphasizes reproducible experiments and honest uncertainty over model complexity.
+A Streamlit application that separates exact course-grade calculations, statistical grade estimates, and hypothetical scenarios. Built as a reproducible data-science portfolio project with transparent baselines and uncertainty.
 
-## What you can do
+[GitHub Actions](https://github.com/zaki-coding/student-grade-predictor-/actions/workflows/quality.yml) · [MIT license](LICENSE) · [Model methodology](reports/methodology.md) · [Deployment checklist](docs/deployment.md) · [Privacy](docs/privacy.md)
 
-- **Overview dashboard:** inspect saved course summaries, earned contributions, target feasibility, and meaningful empty states.
-- **Grade Calculator:** manage courses and assessments, validate weights, track incomplete work, set per-course targets and grading thresholds, and explore exact remaining-mark scenarios. It works without a model.
-- **AI Predictor:** see a grade estimate on the original **0–20** scale, its prediction stage, fitted method, historical errors, measured interval coverage, and input-support notices together.
-- **What-If Lab:** compare supported model inputs and inspect the difference. These are model responses, not causal interventions.
-- **Model Insights:** explore distributions, missingness, correlations, training-validation comparisons, residuals, stage-appropriate baselines, global importance, and interval diagnostics.
-- **Portable local saves:** export and restore a versioned JSON workspace containing courses, targets, and grading boundaries. Original version 1 course exports still work.
-- **Downloads:** export an exact grade-summary CSV or a prediction Markdown report containing submitted inputs, the model's own evaluation snapshot, uncertainty, and limitations.
+![Student Success AI one-click synthetic demo workspace](docs/screenshots/release/demo.jpg)
 
-The current implementation extends the original repository and preserves its history. The GitHub repository remains private; the application runs locally. See [development inspection](docs/development-inspection.md).
+**Try the demo:** choose **Load Demo Workspace** on Overview. This one-click action replaces only the current session's workspace with the existing synthetic example, including marks, targets, and grading boundaries. Export your own workspace first if you want to keep it.
 
-## Run locally
+## Hosted application
 
-Use Python 3.11–3.13 and a writable checkout. From the repository root in Windows PowerShell:
+**Not deployed yet.** The eventual hosted application URL will be added here after the owner approves deployment. Repository visibility and public hosting are separate decisions; this release-preparation branch does not make either change.
+
+## Features
+
+- **Overview:** saved course summaries, earned contributions, and target feasibility.
+- **Grade Calculator:** multiple courses, assessment weights, unfinished marks, configurable thresholds, and exact remaining-mark planning. It does not require prediction initialization.
+- **AI Predictor:** early and updated estimates on the original **0–20** scale, active inputs, historical error, prediction intervals, and input-support warnings.
+- **What-If Lab:** comparisons using the selected model's actual inputs, with explicit noncausal interpretation.
+- **Model Insights:** data distributions, missingness, correlations, model comparisons, residuals, baselines, and interval diagnostics.
+- **Portable workspaces and reports:** version 1/2 JSON restore, exact grade-summary CSV, and prediction Markdown reports disclosing uncertainty and limitations.
+
+## Install and run locally
+
+Python **3.13** is the recommended tested version; the CI matrix also covers Python **3.11**. From a fresh checkout in Windows PowerShell:
 
 ```powershell
 py -3.13 -m venv .venv
 .\.venv\Scripts\python -m pip install -r requirements.txt
-.\.venv\Scripts\python -m src.train
-.\.venv\Scripts\python -m streamlit run app/Home.py
+.\.venv\Scripts\python -m src.local
 ```
 
-The app opens at [localhost:8501](http://localhost:8501). The default server binds to loopback (`127.0.0.1`) for local-only use. Training downloads the small public UCI dataset if absent, verifies its pinned checksum, compares candidate models, creates trusted local artifacts, and writes numerical reports. Installation and first acquisition need internet access; subsequent calculator and prediction use is local. An absent or outdated model produces a retraining message while the calculator stays available.
+The local launcher binds to **127.0.0.1**, and serves the app at [localhost:8501](http://127.0.0.1:8501/). Use `--port 8502` if needed. On Linux/macOS, create the environment with `python3 -m venv .venv` and replace `.\.venv\Scripts\python` with `.venv/bin/python`.
 
-On Linux/macOS, use `python3 -m venv .venv` and `.venv/bin/python`. Dependencies are declared once in `pyproject.toml`; `requirements.txt` installs the project and test dependencies. Scikit-learn is pinned to **1.8.0**. Actual training versions and split indices are recorded in `reports/split_manifest.json`; retrain after dependency changes.
+**No training command, generated model file, external model download, or developer session is needed to enable predictions.** Installation needs access to the package registry; model initialization uses bundled public data and reviewed recipes. Dependencies are declared in `pyproject.toml`; `requirements.txt` installs the project and its tests. Scikit-learn remains pinned to **1.8.0**. If Windows reports missing package files in a deeply nested folder, use a shorter checkout or virtual-environment path to avoid path-length limits.
 
-## Scientific scope
+## Trusted model initialization
 
-[Cortez's UCI Student Performance dataset](https://archive.ics.uci.edu/dataset/320/student+performance), DOI [10.24432/C5TG7T](https://doi.org/10.24432/C5TG7T), is licensed [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Only the **649 Portuguese-language course records** are used, avoiding cross-subject student overlap. The target is final grade **G3**, a regression outcome on the original **0–20** scale. This is historical secondary-school data from two Portuguese schools, not university grades or percentages. The source has zero missing cells and zero identical full rows; reliable student IDs are unavailable, so independence cannot be proved.
+The application never loads `.joblib` or pickle model artifacts. On the first prediction request in a server process, it verifies the bundled UCI source bytes, approved evaluation snapshots, model/version metadata, and recipe checksums. It then fits only the two already-selected methods on the original **389 training rows**, calibrates on the same **130 calibration rows**, and checks numerical parity with the approved historical outputs. It does not rerun model selection or change the statistical methodology.
 
-The early configuration uses eight questionnaire/background predictors: age, parental education, travel time, study-time category, prior failures, internet access, and higher-education aspiration. Survey timing remains retrospective: this is a proxy for early information, not a prospectively validated early-warning system. Updated candidates can use G1/G2; the selected updated method currently uses **G2 only**. The API retains its compatible schema, while the UI distinguishes active predictors from inactive compatibility defaults. Neither G3 nor full-year absences is an input.
+A locked process cache holds only public training/model resources. It initializes both stages once and reuses them across interactions, with isolated copies preventing caller mutation from changing another session's resources. User inputs, predictions, uploads, and course records are not put into that shared cache. Initialization errors show a safe explanation; the calculator remains available.
 
-### Evaluation and audit
+The trust boundary is the reviewed repository. Hashes detect corruption or mismatched resources; they are not a signature against an attacker who can replace the code and manifest together. Arbitrary `model_dir` paths are rejected without deserialization; the argument remains only for compatibility with the registered default model location. See [the deployment notes](docs/deployment.md) and bundled resource attribution.
 
-Seed **42** preserves the same **389 training / 130 calibration / 130 audit-test rows** across stages and iterations. Five-fold training-only cross-validation evaluates each complete preprocessing/model pipeline. Numeric imputation/scaling and categorical imputation/encoding are fitted within each fold. No calibration or test rows select candidates or fit feature transforms.
+## Measured results and limits
 
-Iteration 2 adds meaningful baselines: training mean and median for early estimates; latest-grade **G2 persistence** and **G1/G2-only linear regression** for updated estimates. Experiments retain the existing linear/tree candidates and add a small fixed Ridge grid (`alpha=1,10,100`). The predeclared selection rule chooses the simplest candidate within one standard error of the lowest training-CV MAE. This is a conservative heuristic, not a hypothesis test. No larger model was justified.
+Source: [UCI Student Performance](https://archive.ics.uci.edu/dataset/320/student+performance), Cortez (2008), DOI [10.24432/C5TG7T](https://doi.org/10.24432/C5TG7T), licensed [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). We use only the **649 Portuguese-language course records** from two Portuguese secondary schools, avoiding cross-subject student overlap. The target is **G3** on the original **0–20** scale, not university GPA or percentages. See [the dataset card](docs/data-card.md).
 
-**The 130-row test sample was already inspected in Phase 1. Current results are a reused historical audit, not fresh independent evidence of improvement.** The original numerical results are preserved in `reports/phase1/`. Training-only selection limits direct leakage but cannot undo benchmark reuse; new external/prospective data is required before claiming generalization gains.
-
-Separate calibration residuals set a finite-sample split-conformal **90% nominal** prediction interval. Audit reports include actual coverage, counts, a 95% Wilson interval for that measured coverage, and descriptive groups. Nominal coverage is marginal under exchangeability; neither it nor a Wilson interval guarantees an individual's result. Discrete grades can produce conservative coverage. All point predictions and intervals consistently use the original bounded scale.
-
-## Actual iteration 2 results
-
-All errors are grade points on the **0–20** scale. These figures were produced locally with scikit-learn **1.8.0**; lower MAE/RMSE is better.
+These are unchanged Iteration 2 measurements; errors are grade points.
 
 | Stage / method | Audit MAE | Audit RMSE | Audit R² |
 | --- | ---: | ---: | ---: |
@@ -59,82 +59,50 @@ All errors are grade points on the **0–20** scale. These figures were produced
 | Updated selected: G2 persistence | 0.677 | 1.170 | 0.860 |
 | Updated G1/G2-only linear baseline | 0.736 | 1.161 | 0.862 |
 
-| Selected stage | Nominal interval | Observed audit coverage | Covered / total | 95% Wilson bounds | Mean width |
+| Selected stage | Nominal interval | Observed coverage | Covered / total | 95% Wilson bounds | Mean width |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | Early | 90% | 89.2% | 116 / 130 | 82.7%–93.5% | 8.983 |
 | Updated | 90% | 98.5% | 128 / 130 | 94.6%–99.6% | 3.985 |
 
-Overall coverage also masks variation: the early age 18–22 descriptive group covered **21 of 28 outcomes (75%)**. This small noisy group is a warning against interpreting overall coverage as a subgroup guarantee; it was not used to retune intervals.
+The updated method **is the latest-grade baseline**: its point estimate equals G2. It won training-only validation; no extra ML value over that baseline is claimed. Early MAE did not materially improve over Phase 1, so the simpler linear model was retained. The broad early interval limits individual usefulness.
 
-The updated selected method **is the G2 baseline**: it copies the latest grade, with a calibrated statistical interval. It does not claim to outperform that baseline or infer a benefit from changing study habits. Its CV MAE was **0.797**, compared with **0.826** for grades-only linear regression and **0.840** for full linear regression. The simpler method was retained rather than adding complexity. Its audit RMSE is slightly worse than grades-only linear regression, despite lower MAE.
+**The test set has already been inspected. These results are a reused historical audit, not fresh independent validation.** The split remains 389 training / 130 calibration / 130 audit rows with seed 42, preprocessing inside training folds, and a predeclared simplicity-aware selection rule. G3 and full-year absences never enter predictors. Early questionnaire timing remains retrospective.
 
-Early performance remains limited. Gradient boosting's CV MAE (**2.070**) was only **0.013** lower than full linear regression (**2.083**), within the one-standard-error threshold. Ridge experiments did not establish a meaningful gain; the selected method was simplified to linear regression. Compared with Phase 1's boosting audit, early MAE is effectively unchanged (**2.135 vs 2.135**), while R² changed from **0.162 to 0.193** and intervals became wider. This is not a meaningful accuracy breakthrough. Weak early signal, few training records, retrospective input timing, and a deliberately restricted feature set constrain usefulness; the broad early interval is visible in the UI.
+Conformal intervals target marginal coverage under exchangeability, not personal or subgroup guarantees. The early age 18–22 group covered only **21/28 outcomes (75%)**. Input-support screens are heuristics and cannot establish applicability to a new institution. No prospective, external, fairness, or causal validation is claimed. Do not use this application for admissions, discipline, grading, or other high-stakes decisions.
 
-Full numerical outputs: [methodology/model card](reports/methodology.md), `reports/metrics.json`, `reports/predictions.csv`, `reports/importance.csv`, `reports/data_summary.json`, and `reports/split_manifest.json`.
+[Full methodology](reports/methodology.md) · [Generated ML audit](reports/ml_audit.md) · [Metrics](reports/metrics.json) · [Historical snapshots](reports/phase1/)
 
-## Input reliability and explanations
+## Research reproduction and tests
 
-Strict schema checks reject extra/missing feature keys, unsupported categories, nonfinite numbers, and out-of-range values. Explicit `None` values use training-fitted imputation in the Python API and trigger a missingness warning; real missing-data accuracy has not been validated.
-
-Training-only support checks flag unseen/rare values and unusual joint profiles using nearest-neighbor distances in training-fitted feature space. For the selected G2 method, only the active G2 predictor drives that geometry. These are screening heuristics: a warning does not diagnose failure, and no warning does not certify applicability or interval coverage. The app is not validated for another institution, subject, population, or grading policy.
-
-Global permutation importance describes model reliance across calibration records. It is not an individual explanation or a causal effect; correlated inputs can share importance. Prediction reports disclose actual active inputs and carry evaluation metadata embedded in the fitted artifact, preventing a new report file from silently changing the metrics shown for an older model.
-
-## Course planning and local persistence
-
-Calculator marks and weights use **0–100 percentages**, independently of the model's scale. Earned contribution is `weight × mark / 100`; the completed average is normalized by completed weight and is not a final-grade forecast. Remaining-target and scenario calculations include unfinished assessments **plus any unallocated course weight**. Total weights may be below 100, never above 100. Targets beyond the maximum attainable result are labeled impossible.
-
-To explore the dashboard without personal data, import [the synthetic example workspace](docs/example-workspace.json) under **Grade Calculator → Manage courses & local files**. Its demonstration courses and marks are not training data or real student records.
-
-Save assessment edits before using their summaries. Each course retains its target; configurable grade boundaries are shared across the workspace. Export the JSON workspace before closing the session, and import it to restore all saved settings. User records stay in temporary session memory until explicitly downloaded; the app does not autosave personal records to server disk or use accounts/cloud databases. JSON/report downloads may contain personal educational information and should be stored privately. CSV user labels are escaped against spreadsheet formula interpretation.
-
-## Architecture and verification
-
-```text
-app/Home.py          Existing five-section Streamlit entry point
-app/components.py    Shared styling, charts, prediction result components
-app/persistence.py   Versioned portable workspace validation/migration
-src/calculator.py    Exact grade, target and planning arithmetic
-src/schema.py        Strict compatible feature schema
-src/data.py          Download, pinned checksum and source provenance
-src/train.py         Training-only model comparison and reproducible audit
-src/estimators.py    Latest-grade baseline estimator
-src/reliability.py   Coverage diagnostics and training-only support heuristics
-src/predict.py       Trusted artifacts and evaluation-bound inference
-src/exports.py       Grade CSV and disclosed prediction report downloads
-tests/               Unit, integration and real Streamlit-runtime checks
-reports/             Measured results, model card and Phase 1 snapshots
-.github/workflows/   Configured Windows/Linux clean-install checks
-```
+The full experiment is separate from app initialization:
 
 ```powershell
+.\.venv\Scripts\python -m src.train
 .\.venv\Scripts\python -m pytest -q
 .\.venv\Scripts\python -m compileall -q src app
 .\.venv\Scripts\python -m pip check
 ```
 
-Train before running artifact integration checks; absent artifacts cause explicit skips. Local Windows/Python 3.13.3 verification: **130 tests passed**, no skips, in **25.63 seconds**. Tests cover prior behavior plus stage baselines, conservative selection, measured coverage counts, support checks, model-bound evaluation, workspace migration/settings, exact planning, safe downloads, dashboard, repeated edits, and prediction/scenario interactions. See [pre-commit validation](reports/precommit-validation.md) and [iteration 2 validation](reports/validation-iteration2.md). The earlier [74-test record](reports/validation.md) remains historical.
+Training compares the original candidates and Ridge grid, regenerates numerical reports, and writes ignored research `.joblib` files. Those files are never loaded by the application. Generated experiment reports use canonical LF line endings. The recorded [seven-report reproducibility comparison](reports/reproducibility-iteration2.json) belongs to the documented experiment environment; small numerical/version differences on other systems are possible.
 
-A repeated full training run reproduced all **seven generated reports byte-for-byte**, including metrics, predictions, importance, data summary, split manifest and both audit reports. See [the reproducibility comparison](reports/reproducibility-iteration2.json). Generated reports use canonical LF line endings so Git preserves the bytes referenced by their SHA-256 values. This confirms repeatability in the tested environment, not independent scientific validity.
+The approved base commit [`73083aa`](https://github.com/zaki-coding/student-grade-predictor-/commit/73083aa86a51c10c1e97eb4f77d635a6ac561b0f) passed all four [Windows/Ubuntu, Python 3.11/3.13 CI jobs](https://github.com/zaki-coding/student-grade-predictor-/actions/runs/42248590363), with **130 local tests** before release preparation. Release-branch validation and clean-start results are recorded separately in [release validation](docs/release-validation.md). CI now exercises the full cold-checkout suite before the separate research-training step. Historical results are not claims that a hosted deployment succeeded.
 
-GitHub Actions trains and tests on Windows/Ubuntu with Python 3.11/3.13. Check the [workflow runs](https://github.com/zaki-coding/student-grade-predictor-/actions/workflows/quality.yml) for the CI status of a specific commit. Local results alone do not establish that every configured CI platform has passed.
+## Privacy and saved work
 
-## Application screenshots
+Use **synthetic demonstration data** for a public portfolio visit. When run locally, inputs are processed on the local machine. When hosted, course marks, uploaded JSON, and prediction inputs are transmitted to the app server and processed by the hosting provider; they do not stay solely on your device.
 
-Actual iteration 2 browser captures of the running application, using the clearly labeled synthetic demonstration workspace.
+The application uses temporary session memory and upload/download buffers. It does not intentionally persist personal grades to server disk, log input contents, add accounts, or introduce analytics trackers. The server operator and hosting provider can still have infrastructure access and their own retention policies; the app does not promise immediate deletion or confidential download URLs. A session is not durable storage. Export your workspace before closing and keep downloaded JSON/CSV/Markdown files private.
 
-![Student Success AI course dashboard](docs/screenshots/iteration2/dashboard.jpg)
+Workspace uploads are limited to **1 MB**, validated before replacing the current session, and cannot supply model artifacts. Shared caches contain public model resources only. See [the complete privacy explanation](docs/privacy.md).
 
-| Exact grade calculator | Prediction results |
+## Screenshots and release review
+
+| Exact grade planning | Prediction stage and uncertainty |
 | --- | --- |
-| ![Exact target planning](docs/screenshots/iteration2/calculator.jpg) | ![Stage, grade and uncertainty](docs/screenshots/iteration2/predictor.jpg) |
+| ![Grade Calculator](docs/screenshots/iteration2/calculator.jpg) | ![Prediction result](docs/screenshots/iteration2/predictor.jpg) |
 
-[Measured model audit and interval diagnostics](docs/screenshots/iteration2/insights.jpg). [Earlier Phase 1 captures](docs/screenshots/) remain development history.
+[Model audit view](docs/screenshots/iteration2/insights.jpg) · [Mobile view](docs/screenshots/iteration2/mobile.jpg)
 
-## Before public release
+The application is prepared for a clearly labeled educational portfolio demonstration, not validated personal academic forecasting. The [deployment checklist](docs/deployment.md) keeps public visibility and hosting behind owner approval. **Renaming the repository to `student-success-ai` is recommended** for consistency with the product name; it has not been renamed automatically.
 
-The remaining limits are scientific and operational: obtain truly new prospective/external data; evaluate subgroup and conditional interval behavior with adequate sample sizes; assess fairness and accessibility with real users; test distribution shift and missingness; and run remote CI on all configured platforms. Small random row splits and heuristic input screening do not solve those gaps. Predictions must not be used for admissions, discipline, grading, or other high-stakes decisions.
-
-There is no individual causal explanation or guarantee of study improvements. Full study scheduling, additional datasets, monitoring, and public deployment remain future work. A practical next step is prospective validation before investing in more complex models. Load only trusted locally trained `.joblib` artifacts: pickle-based loading can execute code.
-
-Code is [MIT licensed](LICENSE); the dataset retains CC BY 4.0. See [third-party notices](docs/third-party-notices.md).
+Code: [MIT](LICENSE). Data and derived reports: CC BY 4.0 with [third-party notices](docs/third-party-notices.md). Full study scheduling, new datasets, and monitoring remain future work.

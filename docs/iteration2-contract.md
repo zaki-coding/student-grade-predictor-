@@ -1,3 +1,5 @@
+> Historical Iteration 2 development contract. Current deployment, model provisioning and hosted privacy behavior are documented in [deployment notes](deployment.md), [privacy](privacy.md), and [the README](../README.md).
+
 # Iteration 2 integration contract (6 November 2026)
 
 Preserve existing APIs, feature sets and split indices. reports/phase1/ snapshots retain prior numerical results. Existing test outcomes were already inspected: current test is a reused historical audit, NOT pristine evidence of improvement. Never select on it. No added complexity without evidence; explore only small regularization and stage-appropriate simple baselines, use training-only CV and prefer simplicity for near ties. All runs reproducible.

@@ -20,6 +20,8 @@ def validate_courses(payload):
         for record in records:
             if not isinstance(record, dict) or set(record) != {"name", "weight", "mark"}:
                 raise ValueError("Each assessment needs exactly name, weight and mark.")
+        if any(not isinstance(record["name"], str) or len(record["name"]) > 200 for record in records):
+            raise ValueError("Assessment names must contain at most 200 characters.")
         calculate(records)
         clean[name] = [dict(record) for record in records]
     return clean
@@ -76,3 +78,32 @@ def workspace_payload(courses, targets=None, thresholds=None):
     return validate_workspace({"version": 2, "courses": courses,
         "targets": {name: targets.get(name, 70.0) for name in courses},
         "thresholds": DEFAULT_THRESHOLDS if thresholds is None else thresholds})
+
+
+MAX_WORKSPACE_BYTES = 1_000_000
+
+
+def decode_workspace_bytes(content):
+    """Decode an untrusted JSON upload without persisting or echoing its contents."""
+    import json
+
+    if not isinstance(content, bytes) or not content or len(content) > MAX_WORKSPACE_BYTES:
+        raise ValueError("Choose a nonempty JSON workspace no larger than 1 MB.")
+
+    def pairs(items):
+        result = {}
+        for key, value in items:
+            if key in result:
+                raise ValueError("Duplicate JSON fields are not allowed.")
+            result[key] = value
+        return result
+
+    def constant(value):
+        raise ValueError("Workspace numbers must be finite.")
+
+    try:
+        payload = json.loads(content.decode("utf-8-sig"), object_pairs_hook=pairs,
+                             parse_constant=constant)
+        return validate_workspace(payload)
+    except (UnicodeError, ValueError, TypeError, KeyError, RecursionError, OverflowError):
+        raise ValueError("The file is not a valid supported workspace. Check its format, grades and weights; your current workspace was kept.") from None

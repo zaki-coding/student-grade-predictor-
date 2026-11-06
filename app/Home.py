@@ -17,7 +17,7 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from src.calculator import calculate, classify, project
-from app.persistence import validate_workspace, workspace_payload
+from app.persistence import workspace_payload, decode_workspace_bytes
 from src.exports import course_summary_csv, prediction_report
 from app.components import PALETTE, apply_style, chart, header, prediction_result, reliability_messages
 
@@ -39,6 +39,36 @@ def ensure_workspace():
 
 def navigate(page):
     st.session_state["page"] = page
+
+
+def replace_session_workspace(clean):
+    """Apply an already validated workspace only to the current visitor session."""
+    st.session_state["courses"] = clean["courses"]
+    st.session_state["targets"] = clean["targets"]
+    st.session_state["thresholds"] = clean["thresholds"]
+    for key in list(st.session_state):
+        if key in {"threshold_editor", "last_prediction"} or key.startswith(("target_", "scenario_", "assessments_", "assessment_form_")):
+            st.session_state.pop(key, None)
+    st.session_state["course_select"] = next(iter(clean["courses"]))
+    st.session_state["editor_revision"] = st.session_state.get("editor_revision", 0) + 1
+
+
+def load_demo_workspace():
+    try:
+        payload = (ROOT / "docs" / "example-workspace.json").read_bytes()
+        clean = decode_workspace_bytes(payload)
+    except (OSError, ValueError):
+        st.session_state["workspace_notice"] = "The demo workspace could not be loaded. Your current workspace was kept."
+        return
+    replace_session_workspace(clean)
+    st.session_state["workspace_notice"] = "Loaded the synthetic demo workspace for this session. These are demonstration marks, not real student records."
+
+
+def privacy_notice():
+    with st.expander("Privacy: local and hosted use"):
+        st.write("When you run this app locally, inputs are processed on your machine. On a hosted app, course records, uploads and prediction inputs are sent to the app server and processed by its hosting provider. Use synthetic demonstration data when exploring a public instance.")
+        st.write("The app keeps workspace records, uploaded JSON and generated downloads in transient session memory. It does not intentionally write personal grades to server disk, log their contents, or put them in the shared model cache. Export your workspace before closing; a refresh or disconnected session may lose it.")
+        st.write("There are no accounts, analytics trackers or third-party data collection added by this app. Hosting operators and providers may retain operational logs and transient buffers under their own policies; closing a browser is not a promise of immediate deletion. A hosted session and its download links are not a confidential grade vault. Avoid names, IDs or sensitive educational records. Downloaded files are saved to your device and should be kept private.")
 
 
 def update_target(course, key):
@@ -65,21 +95,15 @@ def delete_course(course):
         st.session_state["course_select"] = next(iter(courses))
 
 
-def read_json(name):
-    path = ROOT / "reports" / name
-    if not path.exists():
-        return None
-    try:
-        return json.loads(path.read_text(encoding="utf-8"))
-    except (ValueError, OSError) as exc:
-        st.warning(f"Could not read {name}: {exc}")
-        return None
-
-
 def model_help():
-    st.info("Model artifacts are unavailable. The grade calculator is ready to use. "
-            "To enable predictions and measured insights, run this command from the project root:")
-    st.code("python -m src.train", language="bash")
+    st.info("Predictions are temporarily unavailable because model preparation could not finish. The grade calculator is ready to use. No personal grades are used for model preparation.")
+    st.caption("Retry initialization below. If the problem continues, the operator should verify the bundled release resources and supported dependency versions.")
+    st.button("Retry model initialization", on_click=lambda: None, key="retry_initialization")
+
+
+def prepared_bundle(load_bundle, stage):
+    with st.spinner("Preparing verified prediction models (first use only)…"):
+        return load_bundle(stage, ROOT / "models")
 
 
 def get_model_api():
@@ -129,6 +153,10 @@ def dashboard():
 def overview():
     header("YOUR ACADEMIC ANALYTICS WORKSPACE", "Make every assessment count.",
            "A clearer view of where you stand, what comes next, and what the data can tell you.")
+    st.button("Load Demo Workspace", key="load_demo", type="primary", on_click=load_demo_workspace)
+    st.caption("One click loads synthetic demonstration courses. This replaces this session's courses, targets and grading thresholds; export your current workspace first.")
+    if st.session_state.get("workspace_notice"):
+        st.info(st.session_state.pop("workspace_notice"))
     dashboard()
     st.markdown('''<div class="hero"><div class="eyebrow">STUDENT SUCCESS AI</div>
     <h2>Know your grades.<br>Explore your possibilities.</h2>
@@ -153,14 +181,15 @@ def overview():
                  "and global feature importance. Predictions retain the dataset’s original 0–20 scale.")
         st.caption("Research demonstration • Historical data from two Portuguese secondary schools • Not validated for your university")
     with right:
-        st.subheader("Your records stay in your hands")
+        st.subheader("Understand where inputs go")
         st.write("Course records, targets and grading thresholds live in temporary server memory for your current app session. Export a versioned workspace JSON file to save them "
-                 "on your device, then import it when you return. The app does not write your records to disk.")
+                 "on your device, then import it when you return. On a hosted instance, inputs are sent to the app server and hosting provider; use synthetic data for public demonstrations.")
 
 
 def calculator_page():
     header("EXACT CALCULATION", "Your grades, clearly calculated.",
            "Track assessment weights and find the average mark needed across your remaining work.")
+    st.caption("Local runs process entries on your machine. Hosted instances send them to the app server and hosting provider; use synthetic grades when trying a public demonstration.")
     courses = st.session_state["courses"]
     with st.expander("Manage courses & local files"):
         a, b = st.columns(2)
@@ -184,24 +213,15 @@ def calculator_page():
             st.download_button("Export all courses (JSON)",
                                json.dumps(workspace_payload(courses,st.session_state["targets"],st.session_state["thresholds"]), indent=2, allow_nan=False),
                                file_name="student-success-courses.json", mime="application/json")
+            st.caption("Uploads are processed in server session memory. On hosted instances, the file is transmitted to the host. Use synthetic data for public demos. Maximum workspace size: 1 MB.")
             uploaded = st.file_uploader("Import a course export", type="json")
             if st.button("Import and replace current courses", disabled=uploaded is None):
                 try:
-                    if uploaded.size > 1_000_000:
-                        raise ValueError("The file is too large (maximum 1 MB).")
-                    clean = validate_workspace(json.loads(uploaded.getvalue()))
-                    st.session_state["courses"] = clean["courses"]
-                    st.session_state["targets"] = clean["targets"]
-                    st.session_state["thresholds"] = clean["thresholds"]
-                    st.session_state.pop("threshold_editor", None)
-                    for key in list(st.session_state):
-                        if key.startswith("target_"):
-                            del st.session_state[key]
-                    st.session_state["course_select"] = next(iter(clean["courses"]))
-                    st.session_state["editor_revision"] = st.session_state.get("editor_revision", 0) + 1
+                    clean = decode_workspace_bytes(uploaded.getvalue())
+                    replace_session_workspace(clean)
                     st.rerun()
-                except (ValueError, TypeError, KeyError, UnicodeError) as exc:
-                    st.error(f"Import rejected: {exc}")
+                except (ValueError, TypeError, KeyError, UnicodeError):
+                    st.error("Import rejected: use a supported JSON workspace no larger than 1 MB with valid grades and weights. Your current workspace was kept.")
         st.caption("Export before closing the app. Version 2 saves courses, targets and grading thresholds. Older course exports can be restored too. Import replaces the current workspace after validation.")
     course = st.selectbox("Course", list(courses), key="course_select")
     top_a, top_b = st.columns([4, 1])
@@ -230,8 +250,9 @@ def calculator_page():
                         "mark": None if pd.isna(row["mark"]) else row["mark"]})
     if save_assessments:
         try:
-            calculate(records)
-            courses[course] = records
+            candidate_courses = {**courses, course: records}
+            clean = workspace_payload(candidate_courses, st.session_state["targets"], st.session_state["thresholds"])
+            courses[course] = clean["courses"][course]
             st.session_state["editor_revision"] = revision + 1
             st.rerun()
         except (ValueError, TypeError) as exc:
@@ -359,16 +380,16 @@ def prediction_page():
     stage = st.radio("Prediction stage", ["early", "updated"], horizontal=True, format_func=str.title, key="prediction_stage")
     prediction_context(stage)
     try:
-        current_bundle=load_bundle(stage, ROOT / "models")
+        current_bundle=prepared_bundle(load_bundle, stage)
     except (FileNotFoundError, ValueError, OSError, KeyError) as exc:
         model_help()
-        st.caption(str(exc))
         return
     active=current_bundle.get("active_features",features[stage])
     if set(active)!=set(features[stage]):
         st.info("This selected model uses only " + ", ".join(specs[k]["label"] for k in active) + ". Other schema fields use compatibility defaults and do not affect this selected model.")
     if current_bundle.get("model_name")=="G2Persistence":
         st.info("The selected model is the latest-grade baseline: its point estimate equals G2. The calibrated range describes uncertainty in the final grade; the final result is not known exactly.")
+    st.caption("On a hosted instance, submitted inputs are processed on the app server. Prefer synthetic inputs for public demonstrations.")
     with st.form(f"predict_{stage}"):
         values = controls(features, specs, stage, "predict", active_features=active)
         submitted = st.form_submit_button("Estimate final grade", type="primary", width="stretch")
@@ -377,7 +398,7 @@ def prediction_page():
             result = predict(values, stage, ROOT / "models")
             st.session_state["last_prediction"] = {"values": values, "stage": stage, "result": result}
         except (ValueError, OSError, TypeError, KeyError) as exc:
-            st.error(f"Prediction could not be calculated: {exc}")
+            st.error("The estimate could not be prepared. Check the supported input values and retry; the grade calculator remains available.")
     saved = st.session_state.get("last_prediction")
     if saved and saved["stage"] == stage:
         result = saved["result"]
@@ -399,6 +420,7 @@ def prediction_page():
 def scenario_page():
     header("HYPOTHETICAL COMPARISON", "Explore the what-ifs.",
            "Compare two valid input profiles using the same fitted model.")
+    st.caption("On a hosted instance, scenario inputs are processed on the app server. Use synthetic profiles for public demonstrations.")
     api = get_model_api()
     if not api:
         return
@@ -406,10 +428,9 @@ def scenario_page():
     stage = st.radio("Prediction stage", ["early", "updated"], horizontal=True, format_func=str.title, key="scenario_stage")
     prediction_context(stage)
     try:
-        current_bundle=load_bundle(stage, ROOT / "models")
+        current_bundle=prepared_bundle(load_bundle, stage)
     except (FileNotFoundError, ValueError, OSError, KeyError) as exc:
         model_help()
-        st.caption(str(exc))
         return
     active=current_bundle.get("active_features",features[stage])
     if set(active)!=set(features[stage]):
@@ -429,7 +450,7 @@ def scenario_page():
     try:
         result = compare_scenario(original, adjusted, stage, ROOT / "models")
     except (ValueError, TypeError, OSError, KeyError) as exc:
-        st.error(f"Scenario could not be calculated: {exc}")
+        st.error("The scenario could not be prepared. Check the supported values and retry; the grade calculator remains available.")
         return
     if result["original"].get("warnings") or result["adjusted"].get("warnings"):
         st.subheader("Input support cautions")
@@ -460,11 +481,13 @@ def scenario_page():
 def insights_page():
     header("TRANSPARENT BY DESIGN", "Behind the prediction.",
            "Inspect the data, measured errors, and methodological choices behind Student Success AI.")
-    metrics = read_json("metrics.json")
-    if not metrics:
-        model_help()
+    try:
+        from src.provisioning import read_release_resources
+        _, release_frame, metrics, release_predictions = read_release_resources()
+    except (ImportError, ValueError, OSError):
+        st.info("The approved release data could not pass its integrity checks. Model Insights is temporarily unavailable; the grade calculator remains ready to use.")
         return
-    summary = read_json("data_summary.json") or {}
+    summary = {"rows": len(release_frame)}
     a, b, c = st.columns(3)
     a.metric("Dataset records", str(summary.get("rows", "See dataset")))
     b.metric("Grade scale", "0–20")
@@ -528,9 +551,8 @@ def insights_page():
                            "Mean interval width":round(values["mean_interval_width"],2)} for name,values in groups.items()]
                     st.dataframe(pd.DataFrame(rows),hide_index=True,width="stretch")
                 st.caption("Group checks are descriptive and often small. They do not guarantee conditional or subgroup coverage.")
-        pred_path = ROOT / "reports" / "predictions.csv"
-        if pred_path.exists():
-            predictions = pd.read_csv(pred_path)
+        if not release_predictions.empty:
+            predictions = release_predictions
             predictions = predictions[predictions["stage"] == stage]
             left, right = st.columns(2)
             with left:
@@ -556,25 +578,21 @@ def insights_page():
                        "share importance; negative values can occur through sampling noise. This is neither an "
                        "individual explanation nor evidence of a causal effect.")
     with data_tab:
-        data_path = ROOT / "data" / "student-por.csv"
-        if not data_path.exists():
-            st.info("Download the dataset with python -m src.train to enable dataset charts.")
-        else:
-            data = pd.read_csv(data_path, sep=";")
-            st.subheader("Feature distributions")
-            feature = st.selectbox("Dataset variable", list(data.columns), index=list(data.columns).index("G3"))
-            chart(px.histogram(data, x=feature, title=f"Distribution: {feature}"))
-            st.caption("Exploratory charts include the full source dataset and do not drive model selection.")
-            st.subheader("Missing-value audit")
-            missing = data.isna().sum().rename("Missing values").rename_axis("Variable").reset_index()
-            st.write(f"Observed missing cells: **{int(missing['Missing values'].sum())}**")
-            with st.expander("Missing counts by variable"):
-                st.dataframe(missing, hide_index=True, width="stretch")
-            numeric = data.select_dtypes(include="number")
-            st.subheader("Numeric correlations")
-            chart(px.imshow(numeric.corr(), color_continuous_scale="RdBu_r", zmin=-1, zmax=1,
-                            aspect="auto", title="Pearson correlation (observational)"))
-            st.caption("Correlation summarizes association. It does not establish causation or justify using a feature at prediction time.")
+        data = release_frame
+        st.subheader("Feature distributions")
+        feature = st.selectbox("Dataset variable", list(data.columns), index=list(data.columns).index("G3"))
+        chart(px.histogram(data, x=feature, title=f"Distribution: {feature}"))
+        st.caption("Exploratory charts include the full source dataset and do not drive model selection.")
+        st.subheader("Missing-value audit")
+        missing = data.isna().sum().rename("Missing values").rename_axis("Variable").reset_index()
+        st.write(f"Observed missing cells: **{int(missing['Missing values'].sum())}**")
+        with st.expander("Missing counts by variable"):
+            st.dataframe(missing, hide_index=True, width="stretch")
+        numeric = data.select_dtypes(include="number")
+        st.subheader("Numeric correlations")
+        chart(px.imshow(numeric.corr(), color_continuous_scale="RdBu_r", zmin=-1, zmax=1,
+                        aspect="auto", title="Pearson correlation (observational)"))
+        st.caption("Correlation summarizes association. It does not establish causation or justify using a feature at prediction time.")
     with explanation:
         st.subheader("How the experiment is kept honest")
         st.write("One Portuguese-language dataset avoids overlapping student records across subjects. A fixed seed "
@@ -592,7 +610,7 @@ def insights_page():
 - This small historical dataset covers two Portuguese secondary schools and one subject; generalization is unproven.
 - Early-stage questionnaire timing is retrospective. It is a proxy for early information, not a prospectively validated early-warning system.
 - Full-year absences are excluded because they may include information unavailable at the prediction date. G3 is never an input.
-- Updated predictions include G1 and G2, which are strongly associated with the final result and explain much of their advantage.
+- Updated candidates can use prior grades; the selected G2 persistence baseline uses only G2, with statistical uncertainty about the final result.
 - Parent education and access variables may encode social inequalities. No fairness or deployment validation has been established.
 - Intervals target marginal historical coverage under exchangeability. Coverage may fail under new populations or changing assessment policies.
 - Grade calculations are exact arithmetic; ML predictions are estimates; scenarios describe model responses rather than causal interventions.
@@ -609,7 +627,8 @@ with st.sidebar:
     st.divider()
     st.markdown("**Clarity before certainty.**")
     st.caption("Exact calculations · statistical estimates · hypothetical scenarios")
-    st.caption("Local workspace is session-only. Export JSON to keep courses, targets and thresholds.")
+    st.caption("Workspace data is session-only. Export JSON to keep courses, targets and thresholds.")
+    privacy_notice()
 
 {
     "Overview": overview,
