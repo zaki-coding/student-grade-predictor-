@@ -1,0 +1,106 @@
+{
+  "early": {
+    "selected_model": "GradientBoostingRegressor",
+    "cv_results": [
+      {
+        "model": "DummyRegressor",
+        "mae": 2.502043776159532,
+        "rmse": 3.3427581772615964,
+        "r2": -0.006549039463207995,
+        "mae_std": 0.14957926520024534
+      },
+      {
+        "model": "LinearRegression",
+        "mae": 2.0833843422958145,
+        "rmse": 2.9175412818223205,
+        "r2": 0.22879167860318167,
+        "mae_std": 0.13580659389198374
+      },
+      {
+        "model": "RandomForestRegressor",
+        "mae": 2.1469995493786738,
+        "rmse": 2.9403673241452966,
+        "r2": 0.21474859717012737,
+        "mae_std": 0.15347200269029865
+      },
+      {
+        "model": "GradientBoostingRegressor",
+        "mae": 2.0699483504963054,
+        "rmse": 2.8540483228540463,
+        "r2": 0.2636640656570283,
+        "mae_std": 0.16025046673299262
+      }
+    ],
+    "test": {
+      "mae": 2.134513874722766,
+      "rmse": 2.8594534356764103,
+      "r2": 0.1615348549273835,
+      "coverage": 0.8923076923076924,
+      "mean_interval_width": 8.50609316118182
+    },
+    "baseline_test": {
+      "mae": 2.4037176191417835,
+      "rmse": 3.1864930053745173,
+      "r2": -0.04122573893098602
+    },
+    "split_sizes": {
+      "train": 389,
+      "calibration": 130,
+      "test": 130
+    },
+    "interval_nominal_coverage": 0.9,
+    "interval_radius": 4.25304658059091
+  },
+  "updated": {
+    "selected_model": "LinearRegression",
+    "cv_results": [
+      {
+        "model": "DummyRegressor",
+        "mae": 2.502043776159532,
+        "rmse": 3.3427581772615964,
+        "r2": -0.006549039463207995,
+        "mae_std": 0.14957926520024534
+      },
+      {
+        "model": "LinearRegression",
+        "mae": 0.8395501065456727,
+        "rmse": 1.3371380375698971,
+        "r2": 0.8355519843856831,
+        "mae_std": 0.13311205893497538
+      },
+      {
+        "model": "RandomForestRegressor",
+        "mae": 0.9109437148799646,
+        "rmse": 1.4553456558043423,
+        "r2": 0.8073270650853779,
+        "mae_std": 0.14388003819827352
+      },
+      {
+        "model": "GradientBoostingRegressor",
+        "mae": 0.884117473267619,
+        "rmse": 1.415881903610718,
+        "r2": 0.8180515558176374,
+        "mae_std": 0.11844542575800276
+      }
+    ],
+    "test": {
+      "mae": 0.7339282169842531,
+      "rmse": 1.1593138808680166,
+      "r2": 0.8621772129504859,
+      "coverage": 0.9384615384615385,
+      "mean_interval_width": 3.2237379457418096
+    },
+    "baseline_test": {
+      "mae": 2.4037176191417835,
+      "rmse": 3.1864930053745173,
+      "r2": -0.04122573893098602
+    },
+    "split_sizes": {
+      "train": 389,
+      "calibration": 130,
+      "test": 130
+    },
+    "interval_nominal_coverage": 0.9,
+    "interval_radius": 1.6269880659855964
+  }
+}

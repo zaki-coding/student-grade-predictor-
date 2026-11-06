@@ -1,0 +1,16 @@
+{
+  "version": 2,
+  "courses": {
+    "Demo — Statistics": [
+      {"name": "Quiz", "weight": 20, "mark": 80},
+      {"name": "Project", "weight": 30, "mark": 75},
+      {"name": "Final exam", "weight": 50, "mark": null}
+    ],
+    "Demo — Programming": [
+      {"name": "Coursework", "weight": 40, "mark": 85},
+      {"name": "Practical exam", "weight": 60, "mark": null}
+    ]
+  },
+  "targets": {"Demo — Statistics": 76.0, "Demo — Programming": 82.5},
+  "thresholds": {"Distinction": 85, "Merit": 70, "Pass": 50, "Below pass": 0}
+}

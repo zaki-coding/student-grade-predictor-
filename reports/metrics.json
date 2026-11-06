@@ -1,0 +1,510 @@
+{
+  "early": {
+    "selected_model": "LinearRegression",
+    "cv_results": [
+      {
+        "model": "DummyRegressor",
+        "mae": 2.502043776159532,
+        "rmse": 3.3427581772615964,
+        "r2": -0.006549039463207995,
+        "mae_std": 0.16723470250610864,
+        "mae_se": 0.07478963260012267,
+        "fold_mae": [
+          2.5514881688515128,
+          2.703561711600298,
+          2.306167037678292,
+          2.5947728584384535,
+          2.354229104229104
+        ]
+      },
+      {
+        "model": "MedianRegressor",
+        "mae": 2.4906426906426904,
+        "rmse": 3.3494642315601437,
+        "r2": -0.009383516728624652,
+        "mae_std": 0.18300623259496893,
+        "mae_se": 0.08184287527769765,
+        "fold_mae": [
+          2.5384615384615383,
+          2.730769230769231,
+          2.269230769230769,
+          2.5641025641025643,
+          2.3506493506493507
+        ]
+      },
+      {
+        "model": "LinearRegression",
+        "mae": 2.0833843422958145,
+        "rmse": 2.9175412818223205,
+        "r2": 0.22879167860318167,
+        "mae_std": 0.15183638786759168,
+        "mae_se": 0.06790329694599187,
+        "fold_mae": [
+          2.1409998024937624,
+          2.247961483820622,
+          1.8718110999547177,
+          2.1702493762873454,
+          1.9858999489226243
+        ]
+      },
+      {
+        "model": "Ridge(alpha=1)",
+        "mae": 2.082517530837901,
+        "rmse": 2.916846907449723,
+        "r2": 0.22916552459742762,
+        "mae_std": 0.15087641882690656,
+        "mae_se": 0.06747398573973842,
+        "fold_mae": [
+          2.135563437166931,
+          2.247481141290707,
+          1.8728669601533163,
+          2.1706408646315767,
+          1.9860352509469725
+        ]
+      },
+      {
+        "model": "Ridge(alpha=10)",
+        "mae": 2.077143960753866,
+        "rmse": 2.9124646544723367,
+        "r2": 0.23154221050069568,
+        "mae_std": 0.1448191262656312,
+        "mae_se": 0.06476508215441533,
+        "fold_mae": [
+          2.0980345981568567,
+          2.244298256691538,
+          1.8814345970018207,
+          2.173663319460815,
+          1.9882890324582998
+        ]
+      },
+      {
+        "model": "Ridge(alpha=100)",
+        "mae": 2.079787489078689,
+        "rmse": 2.9207830616129913,
+        "r2": 0.2279278340705007,
+        "mae_std": 0.1396508985206702,
+        "mae_se": 0.06245378044222867,
+        "fold_mae": [
+          1.9794279916380106,
+          2.259493880917534,
+          1.9529815846138978,
+          2.1995304348660296,
+          2.007503553357975
+        ]
+      },
+      {
+        "model": "GradientBoostingRegressor",
+        "mae": 2.0699483504963054,
+        "rmse": 2.8540483228540463,
+        "r2": 0.2636640656570283,
+        "mae_std": 0.17916546852052007,
+        "mae_se": 0.08012523336649631,
+        "fold_mae": [
+          2.1151463024110657,
+          2.2549786218507704,
+          1.873170490262441,
+          2.2157670316651283,
+          1.8906793062921237
+        ]
+      },
+      {
+        "model": "RandomForestRegressor",
+        "mae": 2.1469995493786738,
+        "rmse": 2.9403673241452966,
+        "r2": 0.21474859717012737,
+        "mae_std": 0.17158691532926917,
+        "mae_se": 0.07673600134514931,
+        "fold_mae": [
+          2.2271578952646585,
+          2.3395287732321677,
+          1.912535270536402,
+          2.2242502605832684,
+          2.0315255472768716
+        ]
+      }
+    ],
+    "test": {
+      "mae": 2.1351394219443534,
+      "rmse": 2.805598649081493,
+      "r2": 0.1928206483010032,
+      "coverage": 0.8923076923076924,
+      "mean_interval_width": 8.983321474844772
+    },
+    "baseline_test": {
+      "mae": 2.4037176191417835,
+      "rmse": 3.1864930053745173,
+      "r2": -0.04122573893098602
+    },
+    "baselines": {
+      "DummyRegressor": {
+        "mae": 2.4037176191417835,
+        "rmse": 3.1864930053745173,
+        "r2": -0.04122573893098602
+      },
+      "MedianRegressor": {
+        "mae": 2.3692307692307693,
+        "rmse": 3.1427572411694604,
+        "r2": -0.01283949418703445
+      }
+    },
+    "split_sizes": {
+      "train": 389,
+      "calibration": 130,
+      "test": 130
+    },
+    "interval_nominal_coverage": 0.9,
+    "interval_radius": 4.4939357175067585,
+    "interval_diagnostics": {
+      "overall": {
+        "n": 130,
+        "covered": 116,
+        "coverage": 0.8923076923076924,
+        "coverage_95ci": [
+          0.8273370377561917,
+          0.9347586603835623
+        ],
+        "mean_interval_width": 8.983321474844772
+      },
+      "groups": {
+        "age_15_17": {
+          "n": 102,
+          "covered": 95,
+          "coverage": 0.9313725490196079,
+          "coverage_95ci": [
+            0.8650704496132519,
+            0.9663617791231328
+          ],
+          "mean_interval_width": 8.982072466170997
+        },
+        "age_18_22": {
+          "n": 28,
+          "covered": 21,
+          "coverage": 0.75,
+          "coverage_95ci": [
+            0.5664432968100104,
+            0.8732350508070668
+          ],
+          "mean_interval_width": 8.987871435013517
+        },
+        "studytime_1_2": {
+          "n": 96,
+          "covered": 84,
+          "coverage": 0.875,
+          "coverage_95ci": [
+            0.794115318705986,
+            0.9270279904007575
+          ],
+          "mean_interval_width": 8.98171003061834
+        },
+        "studytime_3_4": {
+          "n": 34,
+          "covered": 32,
+          "coverage": 0.9411764705882353,
+          "coverage_95ci": [
+            0.80906393095719,
+            0.9837173447898772
+          ],
+          "mean_interval_width": 8.987871435013517
+        },
+        "interval_midpoint_below_10": {
+          "n": 13,
+          "covered": 11,
+          "coverage": 0.8461538461538461,
+          "coverage_95ci": [
+            0.5776536898051745,
+            0.9567418216419186
+          ],
+          "mean_interval_width": 8.942371833326053
+        },
+        "interval_midpoint_at_least_10": {
+          "n": 117,
+          "covered": 105,
+          "coverage": 0.8974358974358975,
+          "coverage_95ci": [
+            0.829253042141972,
+            0.9403503779722656
+          ],
+          "mean_interval_width": 8.987871435013515
+        }
+      },
+      "group_caveat": "Descriptive small-sample groups; no simultaneous or conditional coverage guarantee."
+    },
+    "selection_rule": "Simplest candidate within one standard error of minimum five-fold training CV MAE. Fixed order: mean, median, updated G2 persistence, updated prior-grades linear, full linear, Ridge alpha1/10/100, gradient boosting, random forest. No selection on calibration or test.",
+    "selection_cutoff_mae": 2.1500735838628016,
+    "evaluation_context": "Reused historical 130-row test audit, already inspected in Phase1; not fresh holdout evidence. Selection uses training CV only. External/prospective validation remains necessary."
+  },
+  "updated": {
+    "selected_model": "G2Persistence",
+    "cv_results": [
+      {
+        "model": "DummyRegressor",
+        "mae": 2.502043776159532,
+        "rmse": 3.3427581772615964,
+        "r2": -0.006549039463207995,
+        "mae_std": 0.16723470250610864,
+        "mae_se": 0.07478963260012267,
+        "fold_mae": [
+          2.5514881688515128,
+          2.703561711600298,
+          2.306167037678292,
+          2.5947728584384535,
+          2.354229104229104
+        ]
+      },
+      {
+        "model": "MedianRegressor",
+        "mae": 2.4906426906426904,
+        "rmse": 3.3494642315601437,
+        "r2": -0.009383516728624652,
+        "mae_std": 0.18300623259496893,
+        "mae_se": 0.08184287527769765,
+        "fold_mae": [
+          2.5384615384615383,
+          2.730769230769231,
+          2.269230769230769,
+          2.5641025641025643,
+          2.3506493506493507
+        ]
+      },
+      {
+        "model": "G2Persistence",
+        "mae": 0.7970029970029969,
+        "rmse": 1.3556072096046197,
+        "r2": 0.8297341871341928,
+        "mae_std": 0.16441743487913243,
+        "mae_se": 0.073529712215177,
+        "fold_mae": [
+          0.7948717948717948,
+          1.0512820512820513,
+          0.6794871794871795,
+          0.6282051282051282,
+          0.8311688311688312
+        ]
+      },
+      {
+        "model": "PriorGradesLinear",
+        "mae": 0.8263531038013209,
+        "rmse": 1.300752719182975,
+        "r2": 0.8432307475199228,
+        "mae_std": 0.14462576570493013,
+        "mae_se": 0.06467860868283631,
+        "fold_mae": [
+          0.8338851423576872,
+          1.0538582110868593,
+          0.7041098308919727,
+          0.6973390332688383,
+          0.8425733014012476
+        ]
+      },
+      {
+        "model": "LinearRegression",
+        "mae": 0.8395501065456727,
+        "rmse": 1.3371380375698971,
+        "r2": 0.8355519843856831,
+        "mae_std": 0.14882380620178162,
+        "mae_se": 0.06655602946748769,
+        "fold_mae": [
+          0.9114113878675371,
+          1.0381531080762523,
+          0.6850092559680243,
+          0.6997809652351323,
+          0.8633958155814183
+        ]
+      },
+      {
+        "model": "Ridge(alpha=1)",
+        "mae": 0.8385288059933274,
+        "rmse": 1.3369914184207072,
+        "r2": 0.8356364338273098,
+        "mae_std": 0.1485073522331127,
+        "mae_se": 0.06641450695034903,
+        "fold_mae": [
+          0.9092510958014001,
+          1.0382376642511435,
+          0.6843163282628454,
+          0.7004270137694042,
+          0.8604119278818436
+        ]
+      },
+      {
+        "model": "Ridge(alpha=10)",
+        "mae": 0.8337590182369627,
+        "rmse": 1.341998472169887,
+        "r2": 0.83484776049009,
+        "mae_std": 0.14568437822662436,
+        "mae_se": 0.06515203459490447,
+        "fold_mae": [
+          0.8964042916488086,
+          1.0390542666481188,
+          0.6784101592379497,
+          0.7128355082536367,
+          0.8420908653963
+        ]
+      },
+      {
+        "model": "Ridge(alpha=100)",
+        "mae": 0.9085479692067832,
+        "rmse": 1.4795280858658284,
+        "r2": 0.8021054186976884,
+        "mae_std": 0.14605856987603938,
+        "mae_se": 0.06531937818784542,
+        "fold_mae": [
+          0.9378884759064647,
+          1.1252509663502124,
+          0.7242625617471666,
+          0.8490051250732649,
+          0.9063327169568076
+        ]
+      },
+      {
+        "model": "GradientBoostingRegressor",
+        "mae": 0.884117473267619,
+        "rmse": 1.415881903610718,
+        "r2": 0.8180515558176374,
+        "mae_std": 0.13242601180939936,
+        "mae_se": 0.059222712879001375,
+        "fold_mae": [
+          0.8062411349847574,
+          1.1094870726780393,
+          0.7752917278580238,
+          0.8834890991571632,
+          0.8460783316601115
+        ]
+      },
+      {
+        "model": "RandomForestRegressor",
+        "mae": 0.9109437148799646,
+        "rmse": 1.4553456558043423,
+        "r2": 0.8073270650853779,
+        "mae_std": 0.16086277300830298,
+        "mae_se": 0.07194001909913676,
+        "fold_mae": [
+          0.8541931499020149,
+          1.1918504948210837,
+          0.7809383697692939,
+          0.8685851864157293,
+          0.8591513734917017
+        ]
+      }
+    ],
+    "test": {
+      "mae": 0.676923076923077,
+      "rmse": 1.1701413458342411,
+      "r2": 0.8595907866313924,
+      "coverage": 0.9846153846153847,
+      "mean_interval_width": 3.9846153846153847
+    },
+    "baseline_test": {
+      "mae": 2.4037176191417835,
+      "rmse": 3.1864930053745173,
+      "r2": -0.04122573893098602
+    },
+    "baselines": {
+      "DummyRegressor": {
+        "mae": 2.4037176191417835,
+        "rmse": 3.1864930053745173,
+        "r2": -0.04122573893098602
+      },
+      "MedianRegressor": {
+        "mae": 2.3692307692307693,
+        "rmse": 3.1427572411694604,
+        "r2": -0.01283949418703445
+      },
+      "G2Persistence": {
+        "mae": 0.676923076923077,
+        "rmse": 1.1701413458342411,
+        "r2": 0.8595907866313924
+      },
+      "PriorGradesLinear": {
+        "mae": 0.7357548365247992,
+        "rmse": 1.161103842789143,
+        "r2": 0.8617512920790686
+      }
+    },
+    "split_sizes": {
+      "train": 389,
+      "calibration": 130,
+      "test": 130
+    },
+    "interval_nominal_coverage": 0.9,
+    "interval_radius": 2.0,
+    "interval_diagnostics": {
+      "overall": {
+        "n": 130,
+        "covered": 128,
+        "coverage": 0.9846153846153847,
+        "coverage_95ci": [
+          0.9456415388402218,
+          0.9957707941559447
+        ],
+        "mean_interval_width": 3.9846153846153847
+      },
+      "groups": {
+        "age_15_17": {
+          "n": 102,
+          "covered": 102,
+          "coverage": 1.0,
+          "coverage_95ci": [
+            0.9637055378535367,
+            0.9999999999999999
+          ],
+          "mean_interval_width": 4.0
+        },
+        "age_18_22": {
+          "n": 28,
+          "covered": 26,
+          "coverage": 0.9285714285714286,
+          "coverage_95ci": [
+            0.7735463743160095,
+            0.9801879358846942
+          ],
+          "mean_interval_width": 3.9285714285714284
+        },
+        "studytime_1_2": {
+          "n": 96,
+          "covered": 94,
+          "coverage": 0.9791666666666666,
+          "coverage_95ci": [
+            0.9271928648221579,
+            0.9942680301475697
+          ],
+          "mean_interval_width": 3.9791666666666665
+        },
+        "studytime_3_4": {
+          "n": 34,
+          "covered": 34,
+          "coverage": 1.0,
+          "coverage_95ci": [
+            0.8984854458466761,
+            0.9999999999999999
+          ],
+          "mean_interval_width": 4.0
+        },
+        "interval_midpoint_below_10": {
+          "n": 25,
+          "covered": 23,
+          "coverage": 0.92,
+          "coverage_95ci": [
+            0.7503389104960468,
+            0.9777795987151524
+          ],
+          "mean_interval_width": 3.92
+        },
+        "interval_midpoint_at_least_10": {
+          "n": 105,
+          "covered": 105,
+          "coverage": 1.0,
+          "coverage_95ci": [
+            0.9647059230708901,
+            1.0
+          ],
+          "mean_interval_width": 4.0
+        }
+      },
+      "group_caveat": "Descriptive small-sample groups; no simultaneous or conditional coverage guarantee."
+    },
+    "selection_rule": "Simplest candidate within one standard error of minimum five-fold training CV MAE. Fixed order: mean, median, updated G2 persistence, updated prior-grades linear, full linear, Ridge alpha1/10/100, gradient boosting, random forest. No selection on calibration or test.",
+    "selection_cutoff_mae": 0.8705327092181739,
+    "evaluation_context": "Reused historical 130-row test audit, already inspected in Phase1; not fresh holdout evidence. Selection uses training CV only. External/prospective validation remains necessary."
+  }
+}

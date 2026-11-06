@@ -1,2 +1,7 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Keep generated experiment reports stable when Git checks them out on Windows.
+reports/*.json text eol=lf
+reports/*.csv text eol=lf
+reports/*.md text eol=lf

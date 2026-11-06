@@ -1,0 +1,50 @@
+{
+  "findings": {
+    "target_leakage": "G3 excluded from all features and support heuristics; earlier grades only updated.",
+    "preprocessing": "All imputers/encoders/scalers fit inside each training CV fold; final fit 389 training rows.",
+    "separation": "389 train, 130 calibration, 130 test, no shared row indices. Same fixed splits as Phase 1.",
+    "test_reuse": "Historical test already examined in Phase 1. No selection on this test, but not a fresh independent confirmation.",
+    "validation": "Five-fold training CV for all candidates, one-standard-error simplicity heuristic; folds correlated so SE is not a formal significance test.",
+    "baseline_gap_fixed": "Early mean/median; updated G2 persistence and G1/G2-only linear added beside mean/median.",
+    "timing": "Questionnaire timing cannot prove prospective early availability. Full-year absences excluded.",
+    "input_support": "Strict domain/schema rejection plus training-only active-feature support and nearest-neighbor warning heuristic.",
+    "unresolved": "No student IDs or temporal/external cohort. Random row split cannot establish independence, transportability or fairness."
+  },
+  "early_error_by_observed_target_band": {
+    "G3=0": {
+      "n": 2,
+      "mae": 9.599853011251081,
+      "mean_residual": -9.599853011251081
+    },
+    "G3=1..9": {
+      "n": 13,
+      "mae": 2.6540340464085617,
+      "mean_residual": -1.6164627368426143
+    },
+    "G3=10..20": {
+      "n": 115,
+      "mae": 1.9466606628430647,
+      "mean_residual": 0.7698367526303829
+    }
+  },
+  "target_distribution": {
+    "0": 15,
+    "1": 1,
+    "5": 1,
+    "6": 3,
+    "7": 10,
+    "8": 35,
+    "9": 35,
+    "10": 97,
+    "11": 104,
+    "12": 72,
+    "13": 82,
+    "14": 63,
+    "15": 49,
+    "16": 36,
+    "17": 29,
+    "18": 15,
+    "19": 2
+  },
+  "interpretation": "Early coarse background predictors contain limited information without prior grades. Ridge does not materially improve CV error; complexity is not justified. Target-band residuals are descriptive and were not used for tuning."
+}
