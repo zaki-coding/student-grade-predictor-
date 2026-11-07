@@ -4,7 +4,7 @@
 
 A Streamlit application that separates exact course-grade calculations, statistical grade estimates, and hypothetical scenarios. Built as a reproducible data-science portfolio project with transparent baselines and uncertainty.
 
-**[Open the hosted demo](https://student-success-ai-zaki.streamlit.app/)** · Streamlit Community Cloud · **Access currently restricted** (public access not yet confirmed)
+**[Try the public live demo](https://student-success-ai-zaki.streamlit.app/)** · [Public source code](https://github.com/zaki-coding/student-grade-predictor-) · Streamlit Community Cloud
 
 [GitHub Actions](https://github.com/zaki-coding/student-grade-predictor-/actions/workflows/quality.yml) · [MIT license](LICENSE) · [Model methodology](reports/methodology.md) · [Deployment checklist](docs/deployment.md) · [Privacy](docs/privacy.md)
 
@@ -14,7 +14,7 @@ A Streamlit application that separates exact course-grade calculations, statisti
 
 ## Hosted application
 
-**Deployed:** [student-success-ai-zaki.streamlit.app](https://student-success-ai-zaki.streamlit.app/) using `main`, `app/Home.py` and Python 3.13.18. The Streamlit app was last confirmed as **available only to specific people**; visitors may be asked to sign in or request access. The GitHub repository remains private. Deploying the app does **not** automatically make the app or its source public.
+**Public live demo:** [student-success-ai-zaki.streamlit.app](https://student-success-ai-zaki.streamlit.app/), deployed from `main` → `app/Home.py` on Python 3.13.18. Public, signed-out access was verified with the synthetic demo workspace and both prediction stages. The [GitHub repository](https://github.com/zaki-coding/student-grade-predictor-) is also **public**. The app remains an educational research demonstration, not a validated university-grade predictor.
 
 The hosted demo dashboard, calculator, early and updated predictions, What-If Lab, JSON/CSV downloads and Markdown prediction-report download were tested successfully. The optional Plotly chart-to-PNG download could not be confirmed in browser automation; that is **unverified**, not a proven application defect. See [deployment and public-release checklist](docs/deployment.md).
 
@@ -107,6 +107,6 @@ Workspace uploads are limited to **1 MB**, validated before replacing the curren
 
 [Model audit view](docs/screenshots/iteration2/insights.jpg) · [Mobile view](docs/screenshots/iteration2/mobile.jpg)
 
-The application is hosted as an educational portfolio demonstration, not validated personal academic forecasting. The [deployment checklist](docs/deployment.md) describes the remaining public-access steps; the app and repository were last confirmed private. **Renaming the repository to `student-success-ai` remains optional** and has not been performed.
+The public application is an educational portfolio demonstration, not validated personal academic forecasting. The [deployment checklist](docs/deployment.md) documents the release and ongoing safeguards. **Renaming the repository to `student-success-ai` remains optional** and has not been performed.
 
 Code: [MIT](LICENSE). Data and derived reports: CC BY 4.0 with [third-party notices](docs/third-party-notices.md). Full study scheduling, new datasets, and monitoring remain future work.
