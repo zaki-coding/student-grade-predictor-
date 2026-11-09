@@ -37,9 +37,10 @@ def calculate(assessments: list[dict], target: float = 70) -> dict:
             contribution += weight * mark / 100
     if total > 100 + 1e-9:
         raise ValueError("Assessment weights cannot exceed 100%")
+    contribution = min(100.0, contribution)
     remaining = max(0.0, 100 - completed)
     unallocated = max(0.0, 100 - total)
-    maximum = contribution + remaining
+    maximum = min(100.0, contribution + remaining)
     reached = contribution >= target - 1e-9
     required = None if remaining <= 1e-9 else max(0.0, (target - contribution) * 100 / remaining)
     return {
@@ -47,7 +48,7 @@ def calculate(assessments: list[dict], target: float = 70) -> dict:
         "completed_weight": completed,
         "remaining_weight": remaining,
         "unallocated_weight": unallocated,
-        "completed_average": contribution * 100 / completed if completed > 1e-9 else None,
+        "completed_average": min(100.0, contribution * 100 / completed) if completed > 1e-9 else None,
         "required_average": required,
         "target_possible": target <= maximum + 1e-9,
         "maximum_final": maximum,
@@ -66,7 +67,7 @@ def classify(grade: float, thresholds: dict[str, float]) -> str:
             raise ValueError("Threshold labels must be nonempty strings")
         boundaries.append((label, validate_number(boundary, "Threshold")))
     for label, boundary in sorted(boundaries, key=lambda pair: pair[1], reverse=True):
-        if grade >= boundary:
+        if grade >= boundary - 1e-9:
             return label
     return "Below configured thresholds"
 
