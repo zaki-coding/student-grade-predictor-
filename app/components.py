@@ -1,4 +1,4 @@
-"""Reusable visual components for exact calculations and statistical estimates."""
+"""Shared chart styles and prediction displays."""
 import plotly.graph_objects as go
 import streamlit as st
 
@@ -39,15 +39,15 @@ def reliability_messages(result):
         st.warning(warning)
     reliability = result.get("reliability", {})
     if reliability:
-        st.caption("Input support check: " + ("caution" if reliability.get("status") == "caution" else "no heuristic warning") +
-                   ". Training-data similarity is a screening heuristic, not proof that an input is realistic or that a prediction is reliable.")
+        st.caption("Training data check — " + ("caution" if reliability.get("status") == "caution" else "no unusual input flagged") +
+                   ". This check flags unusual inputs. It cannot establish whether the estimate is reliable.")
 
 
 def prediction_result(result):
-    """Render only artifact-bound evaluation, avoiding mismatch with a newer report."""
+    """Show the historical evaluation bundled with this model."""
     stage = result["stage"].title()
     st.subheader(f"{stage} prediction result")
-    st.caption("STATISTICAL ESTIMATE • Final Portuguese-course grade • Original scale: 0–20")
+    st.caption("Estimated final grade for the Portuguese course on a 0–20 scale.")
     nominal = result.get("nominal_coverage", .90)
     a,b = st.columns([1,1])
     a.metric("Estimated final grade", f"{result['prediction']:.1f} / 20")
@@ -79,11 +79,11 @@ def prediction_result(result):
         if isinstance(bounds, (list,tuple)) and len(bounds)==2:
             st.caption(f"95% Wilson interval for observed coverage: {bounds[0]:.1%}–{bounds[1]:.1%}.")
     else:
-        st.info("Evaluation metadata is unavailable for this artifact. Retrain before relying on these estimates.")
+        st.info("Historical error and coverage metrics are unavailable for this estimate.")
     if result.get("evaluation_context"):
         st.caption(result["evaluation_context"])
     if result["stage"] == "early":
-        st.warning("Early estimates have limited predictive precision in this small historical dataset. A broad interval is a reason to plan with your actual assessment results rather than treat the point estimate as a target.")
+        st.warning("Early estimates have wide ranges and can overestimate low grades. Use your recorded assessment marks to plan your course grade.")
     reliability_messages(result)
-    st.info("The range is a split conformal prediction interval for a possible final outcome. Its nominal coverage is marginal under "
-            "exchangeability with the historical calibration sample, not a personal guarantee. Coverage has not been validated for your institution.")
+    st.info("The interval targets average coverage across records similar to the calibration sample. "
+            "Coverage for your institution has not been measured.")

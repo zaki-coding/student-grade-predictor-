@@ -416,14 +416,14 @@ def controls(features, specs, stage, prefix, defaults=None, active_features=None
     return values
 
 
-def prediction_context(stage):
-    st.caption("Source population: Portuguese-language students in two Portuguese secondary schools. "
-               "All predictions use the original 0–20 grade scale, not percentages.")
+def prediction_context(stage, model_name):
+    st.caption("This demo uses Portuguese-language course records from two secondary schools. Grades are on a 0–20 scale.")
     if stage == "early":
-        st.info("Early stage excludes G1 and G2. These retrospective questionnaire variables are proxies for "
-                "early information; their collection timing is not established for a prospective deployment.")
+        st.info("The early model uses background and questionnaire answers. The study did not establish when all answers were collected.")
+    elif model_name == "G2Persistence":
+        st.info("The updated estimate equals the second-period grade (G2). The interval shows how much the final grade may vary.")
     else:
-        st.info("Updated stage uses earlier assessment information after period two. Use it only after G2 is available; the controls below show the inputs actually used by the selected model.")
+        st.info("Use the updated stage after the second-period grade is available.")
 
 
 def prediction_page():
@@ -434,18 +434,14 @@ def prediction_page():
         return
     features, specs, predict, _, load_bundle = api
     stage = st.radio("Prediction stage", ["early", "updated"], horizontal=True, format_func=str.title, key="prediction_stage")
-    prediction_context(stage)
     try:
-        current_bundle=prepared_bundle(load_bundle, stage)
-    except (FileNotFoundError, ValueError, OSError, KeyError) as exc:
+        current_bundle = prepared_bundle(load_bundle, stage)
+    except (FileNotFoundError, ValueError, OSError, KeyError):
         model_help()
         return
-    active=current_bundle.get("active_features",features[stage])
-    if set(active)!=set(features[stage]):
-        st.info("This selected model uses only " + ", ".join(specs[k]["label"] for k in active) + ". Other schema fields use compatibility defaults and do not affect this selected model.")
-    if current_bundle.get("model_name")=="G2Persistence":
-        st.info("The selected model is the latest-grade baseline: its point estimate equals G2. The calibrated range describes uncertainty in the final grade; the final result is not known exactly.")
-    st.caption("On a hosted instance, submitted inputs are processed on the app server. Prefer synthetic inputs for public demonstrations.")
+    prediction_context(stage, current_bundle.get("model_name"))
+    active = current_bundle.get("active_features", features[stage])
+    st.caption("A hosted app sends these inputs to the server. Use synthetic profiles on the public demo.")
     with st.form(f"predict_{stage}"):
         values = controls(features, specs, stage, "predict", active_features=active)
         submitted = st.form_submit_button("Estimate final grade", type="primary", width="stretch")
@@ -464,12 +460,12 @@ def prediction_page():
             active=result.get("active_features",list(saved["values"]))
             st.dataframe(pd.DataFrame([{"Input":specs[k]["label"],"Value":str(v),"Role":"Used by selected model" if k in active else "Compatibility value; not used by selected model", "Meaning":HELP.get(k,"Dataset-supported category or value")}
                                       for k,v in saved["values"].items()]),hide_index=True,width="stretch")
-            st.caption("Only fields marked Used by selected model are predictors; compatibility values are not used. Model predictors are not proven causes. Reported study and travel values are category codes, not exact hours or minutes.")
+            st.caption("The Role column shows which inputs affect the estimate. Study time and travel time are recorded as ranges.")
         st.download_button("Download prediction report (Markdown)",prediction_report(saved["values"],result),
                            file_name=f"student-success-{stage}-prediction.md",mime="text/markdown")
     else:
-        st.info("Complete the supported inputs and choose Estimate final grade. Your result will show its stage, scale, historical error and uncertainty together.")
-    st.warning("Historical associations may not generalize to your school, course, or grading system. "
+        st.info("Enter a profile and choose Estimate final grade to see the estimate and its range.")
+    st.warning("The prediction demo has not been validated for university grades. "
                "Do not use this estimate for admissions, grading, or high-stakes decisions.")
 
 
@@ -482,18 +478,15 @@ def scenario_page():
         return
     features, specs, _, compare_scenario, load_bundle = api
     stage = st.radio("Prediction stage", ["early", "updated"], horizontal=True, format_func=str.title, key="scenario_stage")
-    prediction_context(stage)
     try:
-        current_bundle=prepared_bundle(load_bundle, stage)
-    except (FileNotFoundError, ValueError, OSError, KeyError) as exc:
+        current_bundle = prepared_bundle(load_bundle, stage)
+    except (FileNotFoundError, ValueError, OSError, KeyError):
         model_help()
         return
-    active=current_bundle.get("active_features",features[stage])
-    if set(active)!=set(features[stage]):
-        st.info("The selected model uses only " + ", ".join(specs[k]["label"] for k in active) + ". Only these inputs are adjustable. Other schema fields use compatibility defaults and do not affect this model. Changing G2 is an alternative history, not an actionable study intervention.")
-    st.warning("A changed prediction is a hypothetical model response. It does not establish that changing "
-               "study habits, family background, or earlier grades will cause an improvement. "
-               "Treat previous-grade changes as alternative histories, not actionable interventions.")
+    prediction_context(stage, current_bundle.get("model_name"))
+    active = current_bundle.get("active_features", features[stage])
+    st.warning("Changing an input shows how the estimate responds. The comparison cannot tell you "
+               "whether changing study habits or another input would improve your grade.")
     left, right = st.columns(2, gap="large")
     last = st.session_state.get("last_prediction", {})
     defaults = last.get("values") if last.get("stage") == stage else None
@@ -541,7 +534,7 @@ def insights_page():
         from src.provisioning import read_release_resources
         _, release_frame, metrics, release_predictions = read_release_resources()
     except (ImportError, ValueError, OSError):
-        st.info("The approved release data could not pass its integrity checks. Model Insights is temporarily unavailable; the grade calculator remains ready to use.")
+        st.info("Model insights are unavailable because the bundled files could not be verified. You can still use the planner and calculators.")
         return
     summary = {"rows": len(release_frame)}
     a, b, c = st.columns(3)
@@ -561,19 +554,19 @@ def insights_page():
                     "Audit MAE": m["test"]["mae"], "Baseline MAE": m["baseline_test"]["mae"],
                     "Audit RMSE": m["test"]["rmse"], "Audit R²": m["test"]["r2"],
                     "Interval coverage": m["test"]["coverage"]})
-        st.subheader("Early versus updated: historical audit results")
+        st.subheader("Historical audit results")
         st.dataframe(pd.DataFrame(rows), hide_index=True, width="stretch")
         st.caption("MAE and RMSE are grade-point errors (lower is better). R² compares squared error against "
                    "a constant test-set mean (higher is better; negative values are possible). "
                    "The mean baseline is supplemented below by stage-appropriate alternatives.")
-        st.warning("This historical test set was already inspected in Phase 1. It is reused for auditing, not fresh evidence of prospective improvement. Model selection uses training-only validation.")
+        st.warning("The original project already inspected these 130 audit records. Model selection used separate training rows.")
         stage = st.selectbox("Inspect a prediction stage", ["early", "updated"], format_func=str.title)
         m = metrics[stage]
-        st.subheader("Meaningful baselines for this stage")
+        st.subheader("Baseline comparisons")
         if m.get("baselines"):
             baseline_rows=[{"Baseline":name,**values} for name,values in m["baselines"].items()]
             st.dataframe(pd.DataFrame(baseline_rows),hide_index=True,width="stretch")
-        st.caption("Early baselines use training-only constant summaries. Updated baselines include persistence of G2 and a prior-grades-only linear estimate; they use information actually available at that stage.")
+        st.caption("The constant baselines use the mean or median training grade. Updated baselines can also use G1 or G2.")
         st.caption(m.get("evaluation_context","Historical audit sample; external validation remains outstanding."))
         st.subheader("Training cross-validation comparison")
         cv = pd.DataFrame(m["cv_results"])
@@ -606,7 +599,7 @@ def insights_page():
                            "95% upper (%)":round(values["coverage_95ci"][1]*100,1),
                            "Mean interval width":round(values["mean_interval_width"],2)} for name,values in groups.items()]
                     st.dataframe(pd.DataFrame(rows),hide_index=True,width="stretch")
-                st.caption("Group checks are descriptive and often small. They do not guarantee conditional or subgroup coverage.")
+                st.caption("Some groups have few records, so their observed coverage can vary widely.")
         if not release_predictions.empty:
             predictions = release_predictions
             predictions = predictions[predictions["stage"] == stage]
@@ -615,7 +608,8 @@ def insights_page():
                 fig = px.scatter(predictions, x="actual", y="predicted", opacity=.6,
                     labels={"actual": "Actual final grade", "predicted": "Predicted final grade"}, title="Actual versus predicted")
                 fig.add_shape(type="line", x0=0, x1=20, y0=0, y1=20, line=dict(color="#9CA3AF", dash="dash"))
-                fig.update_xaxes(range=[0, 20]); fig.update_yaxes(range=[0, 20])
+                fig.update_xaxes(range=[0, 20])
+                fig.update_yaxes(range=[0, 20])
                 chart(fig)
             with right:
                 fig = px.scatter(predictions, x="predicted", y="residual", opacity=.6,
@@ -650,15 +644,15 @@ def insights_page():
                         aspect="auto", title="Pearson correlation (observational)"))
         st.caption("Correlation summarizes association. It does not establish causation or justify using a feature at prediction time.")
     with explanation:
-        st.subheader("How the experiment is kept honest")
+        st.subheader("How the models were tested")
         st.write("One Portuguese-language dataset avoids overlapping student records across subjects. A fixed seed "
                  "creates the same training, calibration and held-out test partitions for both prediction stages. "
                  "Training-only cross-validation compares candidates with a predeclared preference for simpler models when differences are small. "
                  "Preprocessing is fitted inside each pipeline and validation fold.")
         st.write("Candidates include constant and stage-specific baselines, linear models with modest regularization, Random Forest and Gradient Boosting. "
                  "The selected pipeline is fitted on training data. Separate calibration residuals set "
-                 "the 90% split conformal interval. The historical test audits the final choice and baselines; "
-                 "it is not used to choose this iteration’s model, but its prior exposure limits claims of fresh evidence.")
+                 "the 90% split conformal interval. The historical audit measures errors for the selected methods and baselines. "
+                 "The version 3 comparison reused the training rows and is documented separately.")
         if "split_sizes" in metrics["early"]:
             st.write("Partition sizes:", metrics["early"]["split_sizes"])
         st.subheader("What the model cannot tell you")
