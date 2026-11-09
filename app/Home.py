@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import date, datetime
 import hashlib
 import json
 from pathlib import Path
@@ -17,13 +18,17 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from src.calculator import calculate, classify, project
+from src.gpa import MAX_CREDITS
+from src.planner import ASSESSMENT_KINDS, default_planning
+from app.academic_ui import gpa_page, individual_scenarios, planner_page
 from app.persistence import workspace_payload, decode_workspace_bytes
 from src.exports import course_summary_csv, prediction_report
 from app.components import PALETTE, apply_style, chart, header, prediction_result, reliability_messages
 
 st.set_page_config(page_title="Student Success AI", page_icon="🎓", layout="wide")
 
-PAGES = ["Overview", "Grade Calculator", "AI Predictor", "What-If Lab", "Model Insights"]
+PAGES = ["Overview", "Semester Planner", "Grade Calculator", "GPA Calculator",
+         "AI Predictor", "What-If Lab", "Model Insights"]
 apply_style()
 
 
@@ -33,7 +38,13 @@ def ensure_workspace():
         {"name": "Final assessment", "weight": 70.0, "mark": None}]})
     st.session_state.setdefault("targets", {})
     st.session_state.setdefault("thresholds", {"A":90,"B":80,"C":70,"D":60,"F":0})
-    for name in st.session_state["courses"]:
+    courses = st.session_state["courses"]
+    defaults = default_planning(courses)
+    planning = st.session_state.setdefault("planning", defaults)
+    planning["credits"] = {
+        name: planning["credits"].get(name, defaults["credits"][name]) for name in courses
+    }
+    for name in courses:
         st.session_state["targets"].setdefault(name, 70.0)
 
 
@@ -41,15 +52,30 @@ def navigate(page):
     st.session_state["page"] = page
 
 
+def open_calculator(course):
+    st.session_state["course_select"] = course
+    navigate("Grade Calculator")
+
+
+def current_workspace(courses=None, thresholds=None, planning=None):
+    return workspace_payload(
+        st.session_state["courses"] if courses is None else courses,
+        st.session_state["targets"],
+        st.session_state["thresholds"] if thresholds is None else thresholds,
+        st.session_state["planning"] if planning is None else planning,
+    )
+
+
 def replace_session_workspace(clean):
     """Apply an already validated workspace only to the current visitor session."""
     st.session_state["courses"] = clean["courses"]
     st.session_state["targets"] = clean["targets"]
     st.session_state["thresholds"] = clean["thresholds"]
+    st.session_state["planning"] = clean.get("planning", default_planning(clean["courses"]))
     for key in list(st.session_state):
-        if key in {"threshold_editor", "last_prediction"} or key.startswith(("target_", "scenario_", "assessments_", "assessment_form_")):
+        if key in {"threshold_editor", "last_prediction"} or key.startswith(("target_", "scenario_", "assessments_", "assessment_form_", "academic_")):
             st.session_state.pop(key, None)
-    st.session_state["course_select"] = next(iter(clean["courses"]))
+    st.session_state["course_select"] = next(iter(clean["courses"]), None)
     st.session_state["editor_revision"] = st.session_state.get("editor_revision", 0) + 1
 
 
@@ -78,7 +104,7 @@ def update_target(course, key):
 def update_thresholds():
     try:
         values=json.loads(st.session_state["threshold_editor"])
-        clean=workspace_payload(st.session_state["courses"],st.session_state["targets"],values)
+        clean = current_workspace(thresholds=values)
         st.session_state["thresholds"]=clean["thresholds"]
     except (ValueError,TypeError,AttributeError):
         pass  # Retain last valid thresholds; show the error beside the editor.
@@ -89,10 +115,12 @@ def delete_course(course):
     if len(courses) > 1:
         del courses[course]
         st.session_state["targets"].pop(course, None)
+        st.session_state["planning"]["credits"].pop(course, None)
         digest=hashlib.sha256(course.encode()).hexdigest()[:12]
         st.session_state.pop(f"target_{digest}",None)
         st.session_state.pop(f"scenario_{digest}",None)
         st.session_state["course_select"] = next(iter(courses))
+        st.session_state["editor_revision"] = st.session_state.get("editor_revision", 0) + 1
 
 
 def model_help():
@@ -145,7 +173,7 @@ def dashboard():
         fig.update_layout(title="Earned grade points and course targets", xaxis=dict(title="Course percentage points",range=[0,100]),
                           height=max(280,70*len(summaries)))
         chart(fig)
-    st.download_button("Download grade summary (CSV)",course_summary_csv(courses,targets),
+    st.download_button("Download grade summary (CSV)",course_summary_csv(courses, targets, st.session_state["planning"]),
                        file_name="student-success-grade-summary.csv",mime="text/csv",key="dashboard_csv")
     st.caption("Save your workspace from the Grade Calculator to retain courses, targets and grading thresholds between sessions.")
 
@@ -186,11 +214,10 @@ def overview():
                  "on your device, then import it when you return. On a hosted instance, inputs are sent to the app server and hosting provider; use synthetic data for public demonstrations.")
 
 
-def calculator_page():
-    header("EXACT CALCULATION", "Your grades, clearly calculated.",
-           "Track assessment weights and find the average mark needed across your remaining work.")
-    st.caption("Local runs process entries on your machine. Hosted instances send them to the app server and hosting provider; use synthetic grades when trying a public demonstration.")
+def course_editor():
+    """Edit the same course records from the planner and grade calculator."""
     courses = st.session_state["courses"]
+    planning = st.session_state["planning"]
     with st.expander("Manage courses & local files"):
         a, b = st.columns(2)
         with a:
@@ -207,11 +234,13 @@ def calculator_page():
                     else:
                         courses[name] = []
                         st.session_state["targets"][name] = 70.0
+                        planning["credits"][name] = default_planning({name: []})["credits"][name]
                         st.session_state["course_select"] = name
+                        st.session_state["editor_revision"] = st.session_state.get("editor_revision", 0) + 1
                         st.rerun()
         with b:
             st.download_button("Export all courses (JSON)",
-                               json.dumps(workspace_payload(courses,st.session_state["targets"],st.session_state["thresholds"]), indent=2, allow_nan=False),
+                               json.dumps(current_workspace(), indent=2, allow_nan=False),
                                file_name="student-success-courses.json", mime="application/json")
             st.caption("Uploads are processed in server session memory. On hosted instances, the file is transmitted to the host. Use synthetic data for public demos. Maximum workspace size: 1 MB.")
             uploaded = st.file_uploader("Import a course export", type="json")
@@ -222,7 +251,10 @@ def calculator_page():
                     st.rerun()
                 except (ValueError, TypeError, KeyError, UnicodeError):
                     st.error("Import rejected: use a supported JSON workspace no larger than 1 MB with valid grades and weights. Your current workspace was kept.")
-        st.caption("Export before closing the app. Version 2 saves courses, targets and grading thresholds. Older course exports can be restored too. Import replaces the current workspace after validation.")
+        st.caption("Export before closing the app to save your courses, deadlines and GPA settings. Importing a workspace replaces your current records. Older exports still work.")
+    if not courses:
+        st.info("Add a course to enter assessments and calculate a grade.")
+        return None
     course = st.selectbox("Course", list(courses), key="course_select")
     top_a, top_b = st.columns([4, 1])
     with top_a:
@@ -230,37 +262,68 @@ def calculator_page():
     with top_b:
         st.button("Delete course", disabled=len(courses) == 1,
                   on_click=delete_course, args=(course,))
-    frame = pd.DataFrame(courses[course], columns=["name", "weight", "mark"])
+    frame = pd.DataFrame(courses[course], columns=["name", "weight", "mark", "kind", "due"])
+    frame["due"] = pd.Series([date.fromisoformat(value) if pd.notna(value) else None
+                              for value in frame["due"]], dtype=object)
     # Explicit numeric dtype keeps an all-empty marks column editable as numbers.
     for field in ["weight", "mark"]:
         frame[field] = pd.to_numeric(frame[field], errors="coerce").astype(float)
     revision = st.session_state.get("editor_revision", 0)
     course_key = hashlib.sha256(course.encode()).hexdigest()[:12]
     with st.form(f"assessment_form_{course_key}_{revision}"):
+        saved_credits = float(planning["credits"][course])
+        credit_hours = st.number_input("Credit hours", min_value=min(0.01, saved_credits),
+                                       max_value=float(MAX_CREDITS), value=saved_credits, step=0.5)
         edited = st.data_editor(frame, num_rows="dynamic", hide_index=True, width="stretch",
             key=f"assessments_{course_key}_{revision}", column_config={
                 "name": st.column_config.TextColumn("Assessment", required=True),
                 "weight": st.column_config.NumberColumn("Weight (%)", min_value=0, max_value=100, step=1, required=True),
                 "mark": st.column_config.NumberColumn("Achieved mark (%)", min_value=0, max_value=100, step=1),
+                "kind": st.column_config.SelectboxColumn("Type", options=list(ASSESSMENT_KINDS)),
+                "due": st.column_config.DateColumn("Due date", format="YYYY-MM-DD"),
             })
         save_assessments = st.form_submit_button("Save assessments", type="primary")
-    records = []
-    for row in edited.to_dict("records"):
-        records.append({"name": row["name"], "weight": row["weight"],
-                        "mark": None if pd.isna(row["mark"]) else row["mark"]})
     if save_assessments:
         try:
+            records = []
+            for row in edited.to_dict("records"):
+                record = {"name": row["name"], "weight": row["weight"],
+                          "mark": None if pd.isna(row["mark"]) else row["mark"]}
+                if pd.notna(row["kind"]):
+                    record["kind"] = row["kind"]
+                due = row["due"]
+                if pd.notna(due):
+                    if isinstance(due, datetime):
+                        due = due.date()
+                    record["due"] = due.isoformat() if isinstance(due, date) else due
+                records.append(record)
             candidate_courses = {**courses, course: records}
-            clean = workspace_payload(candidate_courses, st.session_state["targets"], st.session_state["thresholds"])
+            candidate_planning = {**planning, "credits": {**planning["credits"], course: credit_hours}}
+            clean = current_workspace(courses=candidate_courses, planning=candidate_planning)
             courses[course] = clean["courses"][course]
+            st.session_state["planning"] = clean["planning"]
             st.session_state["editor_revision"] = revision + 1
             st.rerun()
         except (ValueError, TypeError) as exc:
             st.error(f"Assessments were not saved: {exc}")
-    st.caption("Save your assessment edits to update calculations and include them in your export.")
-    records = courses[course]
-    target = st.slider("Target final grade (%)", 0.0, 100.0, float(st.session_state["targets"].get(course,70)), step=0.5, key=f"target_{course_key}", on_change=update_target, args=(course,f"target_{course_key}"))
+    st.caption("Save assessments to update grades, dates and credit hours.")
+    target_key = f"target_{course_key}"
+    target = st.slider("Target final grade (%)", 0.0, 100.0, float(st.session_state["targets"][course]),
+                       step=0.5, key=target_key, on_change=update_target, args=(course, target_key))
     st.session_state["targets"][course] = float(target)
+    return course
+
+
+def calculator_page():
+    st.title("Grade calculator")
+    st.caption("Use assessment weights and marks to calculate your grade and plan for your target.")
+    course = course_editor()
+    if course is None:
+        return
+    courses = st.session_state["courses"]
+    records = courses[course]
+    target = st.session_state["targets"][course]
+    course_key = hashlib.sha256(course.encode()).hexdigest()[:12]
     try:
         result = calculate(records, target)
     except (ValueError, TypeError) as exc:
@@ -304,7 +367,10 @@ def calculator_page():
         fig.update_yaxes(range=[0,100]); chart(fig)
     else:
         st.info("This course is complete. Its final grade is the earned contribution shown above; no outstanding marks remain to plan.")
-    st.download_button("Download grade summary (CSV)",course_summary_csv(courses,st.session_state["targets"]),
+    revision = st.session_state.get("editor_revision", 0)
+    individual_scenarios(records, target, f"{course_key}_{revision}")
+    st.download_button("Download grade summary (CSV)", course_summary_csv(courses, st.session_state["targets"],
+                       st.session_state["planning"]),
                        file_name="student-success-grade-summary.csv",mime="text/csv",key="calculator_csv")
     if records:
         contributions = pd.DataFrame(records)
@@ -317,7 +383,7 @@ def calculator_page():
                             json.dumps(st.session_state["thresholds"],indent=2), key="threshold_editor", on_change=update_thresholds)
         try:
             boundaries = json.loads(text)
-            clean=workspace_payload(courses,st.session_state["targets"],boundaries)
+            clean = current_workspace(thresholds=boundaries)
             boundaries=clean["thresholds"]
             st.session_state["thresholds"] = boundaries
             if result["completed_average"] is not None:
@@ -632,7 +698,9 @@ with st.sidebar:
 
 {
     "Overview": overview,
+    "Semester Planner": lambda: planner_page(course_editor, open_calculator),
     "Grade Calculator": calculator_page,
+    "GPA Calculator": gpa_page,
     "AI Predictor": prediction_page,
     "What-If Lab": scenario_page,
     "Model Insights": insights_page,
