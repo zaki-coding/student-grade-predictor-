@@ -1,5 +1,7 @@
 """Validate user-controlled workspace files before applying them to a session."""
 
+import json
+
 from src.calculator import validate_number, calculate, classify
 from src.gpa import positive_credits, validate_scale
 from src.planner import ASSESSMENT_KINDS, assessment_date, default_planning
@@ -138,9 +140,23 @@ def workspace_payload(courses, targets=None, thresholds=None, planning=None):
 MAX_WORKSPACE_BYTES = 1_000_000
 
 
+def _serialize_workspace(workspace):
+    try:
+        return json.dumps(workspace, ensure_ascii=False, allow_nan=False, separators=(",", ":")).encode("utf-8")
+    except UnicodeEncodeError:
+        raise ValueError("Workspace text must be valid UTF-8.") from None
+
+
+def encode_workspace_bytes(workspace):
+    """Keep generated JSON within the same size limit as uploads."""
+    raw = _serialize_workspace(workspace)
+    if len(raw) > MAX_WORKSPACE_BYTES:
+        raise ValueError("The workspace would exceed 1 MB. Split the records into smaller workspaces.")
+    return raw
+
+
 def decode_workspace_bytes(content):
     """Decode an untrusted JSON upload without persisting or echoing its contents."""
-    import json
 
     if not isinstance(content, bytes) or not content or len(content) > MAX_WORKSPACE_BYTES:
         raise ValueError("Choose a nonempty JSON workspace no larger than 1 MB.")
@@ -159,6 +175,8 @@ def decode_workspace_bytes(content):
     try:
         payload = json.loads(content.decode("utf-8-sig"), object_pairs_hook=pairs,
                              parse_constant=constant)
-        return validate_workspace(payload)
+        clean = validate_workspace(payload)
+        _serialize_workspace(clean)
+        return clean
     except (UnicodeError, ValueError, TypeError, KeyError, RecursionError, OverflowError):
         raise ValueError("The file is not a valid supported workspace. Check its format, grades and weights; your current workspace was kept.") from None

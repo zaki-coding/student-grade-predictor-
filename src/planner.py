@@ -5,11 +5,12 @@ from datetime import date
 from src.calculator import calculate
 
 ASSESSMENT_KINDS = ("Quiz", "Assignment", "Exam", "Project", "Other")
+DEFAULT_CREDITS = 3.0
 
 
 def default_planning(courses: dict) -> dict:
     return {
-        "credits": {course: 3.0 for course in courses},
+        "credits": {course: DEFAULT_CREDITS for course in courses},
         "gpa_scale": {"maximum": 4.0, "points": {"A": 4.0, "B": 3.0, "C": 2.0, "D": 1.0, "F": 0.0}},
         "gpa_history": [],
     }

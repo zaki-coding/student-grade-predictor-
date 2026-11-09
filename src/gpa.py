@@ -2,7 +2,7 @@
 
 from math import fsum
 
-from src.calculator import validate_number
+from src.calculator import calculate, classify, validate_number
 
 MAX_CREDITS = 1_000_000
 
@@ -80,3 +80,17 @@ def required_future_gpa(
             previous["quality_points"] + maximum * future_credits
         ) / total_credits + 1e-9,
     }
+
+
+
+def course_gpa_rows(courses, credits, thresholds, scale):
+    """List final course marks and their configured GPA points where available."""
+    points = validate_scale(scale)["points"]
+    rows = []
+    for course, assessments in courses.items():
+        result = calculate(assessments)
+        grade = min(100.0, result["contribution"]) if result["remaining_weight"] <= 1e-9 else None
+        label = classify(grade, thresholds) if grade is not None else None
+        rows.append({"course": course, "credits": credits[course], "grade": grade,
+                     "label": label, "gpa": points.get(label)})
+    return rows
