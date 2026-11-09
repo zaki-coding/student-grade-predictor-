@@ -224,8 +224,10 @@ def course_editor():
     """Edit the same course records from the planner and grade calculator."""
     courses = st.session_state["courses"]
     planning = st.session_state["planning"]
-    if st.session_state.get("workspace_notice"):
-        st.success(st.session_state.pop("workspace_notice"))
+    # Keep the file controls at the same position after the notice clears.
+    notice = st.empty()
+    if message := st.session_state.pop("workspace_notice", None):
+        notice.success(message)
     with st.expander("Manage courses & local files"):
         with st.form("new_course", clear_on_submit=True):
             name = st.text_input("New course name", max_chars=100)

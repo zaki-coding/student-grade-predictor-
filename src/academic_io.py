@@ -32,7 +32,9 @@ def _rows(content, fields):
             if any("\x00" in value for value in row.values()):
                 raise ValueError(f"CSV line {reader.line_num} contains an invalid character.")
             found = True
-            yield reader.line_num, {field: row[field].strip() for field in fields}
+            yield reader.line_num, {
+                field: row[field] if field == "course" else row[field].strip() for field in fields
+            }
         if not found:
             raise ValueError("Add at least one row below the CSV header.")
     except csv.Error:
@@ -65,7 +67,7 @@ def import_courses(content, workspace):
     targets = dict(workspace["targets"])
     credits = dict(workspace["planning"]["credits"])
     for line, row in _rows(content, COURSE_FIELDS):
-        name = row["course"]
+        name = row["course"].strip()
         if not 1 <= len(name) <= 100:
             raise ValueError(f"CSV line {line}: enter a course name of 1 to 100 characters.")
         if name in courses:
@@ -83,6 +85,8 @@ def import_assessments(content, workspace):
     replacements = {}
     for line, row in _rows(content, ASSESSMENT_FIELDS):
         course = row["course"]
+        if course not in workspace["courses"]:
+            course = course.strip()
         if course not in workspace["courses"]:
             raise ValueError(f"CSV line {line}: add this course before importing its assessments.")
         records = replacements.setdefault(course, [])

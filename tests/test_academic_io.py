@@ -39,6 +39,19 @@ def test_courses_csv_adds_courses_and_assessments_csv_replaces_only_listed_cours
     assert decode_workspace_bytes(encode_workspace_bytes(updated)) == updated
 
 
+def test_assessments_prefer_exact_legacy_course_names_before_trimming():
+    courses = {"Statistics": [], " Statistics ": []}
+    original = workspace_payload(courses, planning=default_planning(courses))
+    updated = import_assessments(
+        b"course,name,kind,due,weight,mark\n"
+        b" Statistics ,Legacy exam,Exam,,100,80\n"
+        b"  Statistics,Current exam,Exam,,100,90\n",
+        original,
+    )
+    assert updated["courses"][" Statistics "][0]["name"] == "Legacy exam"
+    assert updated["courses"]["Statistics"][0]["name"] == "Current exam"
+
+
 @pytest.mark.parametrize(("data", "message"), [
     (b"course,credits,target\nNew course,3,70\nStatistics,4,75\n", "line 3"),
     (b"course,credits,credits\nTest,4,75\n", "headers"),
