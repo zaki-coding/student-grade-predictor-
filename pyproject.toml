@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "student-success-ai"
-version = "1.0.0"
-description = "Transparent academic grade calculations and reproducible educational ML"
+version = "3.0.0"
+description = "A Streamlit app for tracking grades, planning coursework, and exploring grade predictions"
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"

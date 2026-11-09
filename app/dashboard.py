@@ -67,7 +67,11 @@ def _priorities(summary, targets, today):
         key=lambda item: -item[1],
     )
     if unreachable:
-        st.warning(f"{len(unreachable)} course target(s) are out of reach with the remaining weight.")
+        count = len(unreachable)
+        if count == 1:
+            st.warning("One course target is out of reach with the remaining weight.")
+        else:
+            st.warning(f"{count} course targets are out of reach with the remaining weight.")
         st.dataframe(pd.DataFrame(unreachable, columns=["Course", "Points short even with full marks"]),
                      hide_index=True, width="stretch")
     if demands:
@@ -85,8 +89,10 @@ def _priorities(summary, targets, today):
 
 def _deadlines(summary):
     st.subheader("Assessment deadlines")
-    if summary["overdue"]:
-        st.warning(f"{len(summary['overdue'])} unfinished assessment(s) are overdue.")
+    overdue = len(summary["overdue"])
+    if overdue:
+        message = "One assessment is overdue." if overdue == 1 else f"{overdue} assessments are overdue."
+        st.warning(message)
         deadline_table(summary["overdue"], "dashboard_overdue")
     if summary["upcoming"]:
         deadline_table(summary["upcoming"], "dashboard_upcoming")
@@ -94,8 +100,10 @@ def _deadlines(summary):
         st.info("No upcoming assessments have a due date.")
     dated = len(summary["upcoming"]) + len(summary["overdue"])
     undated = summary["assessment_count"] - summary["completed_count"] - dated
-    if undated:
-        st.caption(f"{undated} unfinished assessment(s) still need a date.")
+    if undated == 1:
+        st.caption("One unfinished assessment still needs a date.")
+    elif undated:
+        st.caption(f"{undated} unfinished assessments still need dates.")
 
 
 def _gpa_metrics(grade_rows, planning):
@@ -156,4 +164,3 @@ def dashboard(courses, targets, thresholds, planning):
                       file_name="student-success-semester-summary.csv", mime="text/csv")
     b.download_button("Download grade summary (CSV)", course_summary_csv(courses, targets, planning),
                       file_name="student-success-grade-summary.csv", mime="text/csv", key="dashboard_csv")
-

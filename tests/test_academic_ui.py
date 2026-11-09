@@ -58,7 +58,7 @@ def test_demo_dashboard_shows_deadlines_and_course_priorities():
     visitor = app()
     visitor.button(key="load_demo").click().run()
     assert not visitor.exception
-    assert any("are overdue" in message.value for message in visitor.warning)
+    assert any("overdue" in message.value for message in visitor.warning)
     assert any("out of reach" in message.value for message in visitor.warning)
     assert any("Highest-weight assessment" in item.value for item in visitor.caption)
     assert any(widget.label == "Cumulative GPA" and widget.value == "3.25 / 4" for widget in visitor.metric)

@@ -257,4 +257,3 @@ def gpa_page():
     else:
         st.warning(f"This target would require {value:.2f} / {maximum:g} over {future:g} future credit hours.")
     st.caption("This target uses recorded GPA and credit hours. Hypothetical results are shown separately.")
-

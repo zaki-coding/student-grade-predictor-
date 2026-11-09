@@ -1,112 +1,68 @@
 # Student Success AI
 
-**Academic Performance Prediction & Analysis Platform**
+A Streamlit app for tracking grades, planning coursework, and exploring grade predictions. The planner and calculators use your course records. The prediction demo uses a separate public dataset.
 
-A Streamlit application that separates exact course-grade calculations, statistical grade estimates, and hypothetical scenarios. Built as a reproducible data-science portfolio project with transparent baselines and uncertainty.
-
-**[Try the public live demo](https://student-success-ai-zaki.streamlit.app/)** · [Public source code](https://github.com/zaki-coding/student-grade-predictor-) · Streamlit Community Cloud
-
-[GitHub Actions](https://github.com/zaki-coding/student-grade-predictor-/actions/workflows/quality.yml) · [MIT license](LICENSE) · [Model methodology](reports/methodology.md) · [Deployment checklist](docs/deployment.md) · [Privacy](docs/privacy.md)
-
-![Student Success AI one-click synthetic demo workspace](docs/screenshots/release/demo.jpg)
-
-**Try the demo:** choose **Load Demo Workspace** on Overview. This one-click action replaces only the current session's workspace with the existing synthetic example, including marks, targets, and grading boundaries. Export your own workspace first if you want to keep it.
-
-## Hosted application
-
-**Public live demo:** [student-success-ai-zaki.streamlit.app](https://student-success-ai-zaki.streamlit.app/), deployed from `main` → `app/Home.py` on Python 3.13.18. Public, signed-out access was verified with the synthetic demo workspace and both prediction stages. The [GitHub repository](https://github.com/zaki-coding/student-grade-predictor-) is also **public**. The app remains an educational research demonstration, not a validated university-grade predictor.
-
-The hosted demo dashboard, calculator, early and updated predictions, What-If Lab, JSON/CSV downloads and Markdown prediction-report download were tested successfully. The optional Plotly chart-to-PNG download could not be confirmed in browser automation; that is **unverified**, not a proven application defect. See [deployment and public-release checklist](docs/deployment.md).
+The [live demo](https://student-success-ai-zaki.streamlit.app/) runs from the main branch.
 
 ## Features
 
-- **Overview:** saved course summaries, earned contributions, and target feasibility.
-- **Grade Calculator:** multiple courses, assessment weights, unfinished marks, configurable thresholds, and exact remaining-mark planning. It does not require prediction initialization.
-- **AI Predictor:** early and updated estimates on the original **0–20** scale, active inputs, historical error, prediction intervals, and input-support warnings.
-- **What-If Lab:** comparisons using the selected model's actual inputs, with explicit noncausal interpretation.
-- **Model Insights:** data distributions, missingness, correlations, model comparisons, residuals, baselines, and interval diagnostics.
-- **Portable workspaces and reports:** version 1/2 JSON restore, exact grade-summary CSV, and prediction Markdown reports disclosing uncertainty and limitations.
+- **Dashboard and semester planner** show course progress, deadlines, and targets using the same assessments as the grade calculator.
+- **Grade calculator** calculates weighted grades, compares hypothetical marks, and shows the score you need on an unfinished exam or across remaining work.
+- **GPA calculator** uses credit hours and your grading scale to calculate semester, cumulative, and hypothetical GPA.
+- **Workspace files** let you restore older JSON workspaces, import courses and assessments from CSV, and download semester, grade, and GPA reports.
+- **Prediction demo** shows early and updated estimates, prediction intervals, and a What-If Lab for comparing model inputs.
 
-## Install and run locally
+See [calculation examples](docs/academic-planning.md), [file formats](docs/workspace-files.md), and the [synthetic example workspace](docs/example-semester.json).
 
-Python **3.13** is the recommended tested version; the CI matrix also covers Python **3.11**. From a fresh checkout in Windows PowerShell:
+## Screenshots
+
+![Dashboard with the synthetic semester](docs/screenshots/v3/dashboard.png)
+
+[Mobile dashboard](docs/screenshots/v3/mobile.png) · [Prediction screen from the previous release](docs/screenshots/iteration2/predictor.jpg)
+
+## Run locally
+
+The app uses Python 3.11 or later, Streamlit and Plotly for the interface, pandas and NumPy for data handling, and scikit-learn for the prediction demo. The tests use pytest.
+
+In Windows PowerShell:
 
 ```powershell
-py -3.13 -m venv .venv
+python -m venv .venv
 .\.venv\Scripts\python -m pip install -r requirements.txt
 .\.venv\Scripts\python -m src.local
 ```
 
-The local launcher binds to **127.0.0.1**, and serves the app at [localhost:8501](http://127.0.0.1:8501/). Use `--port 8502` if needed. On Linux/macOS, create the environment with `python3 -m venv .venv` and replace `.\.venv\Scripts\python` with `.venv/bin/python`.
+On Linux or macOS, use `python3` to create the environment and `.venv/bin/python` in the last two commands. The launcher serves the app at [localhost:8501](http://127.0.0.1:8501/). To try it with sample records, open **Try a sample semester** on the dashboard and choose **Load Demo Workspace**.
 
-**No training command, generated model file, external model download, or developer session is needed to enable predictions.** Installation needs access to the package registry; model initialization uses bundled public data and reviewed recipes. Dependencies are declared in `pyproject.toml`; `requirements.txt` installs the project and its tests. Scikit-learn remains pinned to **1.8.0**. If Windows reports missing package files in a deeply nested folder, use a shorter checkout or virtual-environment path to avoid path-length limits.
+The app fits its approved prediction recipes from bundled public data on first use. Installation requires the dependency packages. Running predictions requires no separate training command or model download.
 
-## Trusted model initialization
+## Prediction demo
 
-The application never loads `.joblib` or pickle model artifacts. On the first prediction request in a server process, it verifies the bundled UCI source bytes, approved evaluation snapshots, model/version metadata, and recipe checksums. It then fits only the two already-selected methods on the original **389 training rows**, calibrates on the same **130 calibration rows**, and checks numerical parity with the approved historical outputs. It does not rerun model selection or change the statistical methodology.
+The target is a Portuguese secondary-school course grade on a 0–20 scale. The **early** model uses linear regression with questionnaire and background fields. The **updated** method uses G2 persistence: the estimate is the second-period grade. The models and the academic calculators use different data and scales.
 
-A locked process cache holds only public training/model resources. It initializes both stages once and reuses them across interactions, with isolated copies preventing caller mutation from changing another session's resources. User inputs, predictions, uploads, and course records are not put into that shared cache. Initialization errors show a safe explanation; the calculator remains available.
+| Method | Historical audit MAE | Observed coverage of 90% nominal intervals |
+| --- | ---: | ---: |
+| Early linear regression | 2.135 / 20 | 116 of 130 (89.2%) |
+| Updated G2 persistence | 0.677 / 20 | 128 of 130 (98.5%) |
 
-The trust boundary is the reviewed repository. Hashes detect corruption or mismatched resources; they are not a signature against an attacker who can replace the code and manifest together. Arbitrary `model_dir` paths are rejected without deserialization; the argument remains only for compatibility with the registered default model location. See [the deployment notes](docs/deployment.md) and bundled resource attribution.
+These measurements come from the existing historical audit, which was inspected before version 3. Early intervals were about 9 points wide on average. Coverage for individual students, universities, and missing inputs has not been established. Input warnings flag profiles that differ from the training records.
 
-## Measured results and limits
+The [version 3 development experiment](reports/development-evaluation-v3.md) used only the original training rows. Huber regression reduced early out-of-fold MAE from 2.084 to 2.057. Median regression on G1 and G2 tied G2 persistence at 0.797. Both are internal comparisons, so the app continues to use the approved methods. See the [model methodology](reports/methodology.md) and [historical audit](reports/ml_audit.md) for the split, baselines, and limitations.
 
-Source: [UCI Student Performance](https://archive.ics.uci.edu/dataset/320/student+performance), Cortez (2008), DOI [10.24432/C5TG7T](https://doi.org/10.24432/C5TG7T), licensed [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). We use only the **649 Portuguese-language course records** from two Portuguese secondary schools, avoiding cross-subject student overlap. The target is **G3** on the original **0–20** scale, not university GPA or percentages. See [the dataset card](docs/data-card.md).
+## Project files
 
-These are unchanged Iteration 2 measurements; errors are grade points.
-
-| Stage / method | Audit MAE | Audit RMSE | Audit R² |
-| --- | ---: | ---: | ---: |
-| Early selected: Linear Regression | 2.135 | 2.806 | 0.193 |
-| Early mean baseline | 2.404 | 3.186 | −0.041 |
-| Early median baseline | 2.369 | 3.143 | −0.013 |
-| Updated selected: G2 persistence | 0.677 | 1.170 | 0.860 |
-| Updated G1/G2-only linear baseline | 0.736 | 1.161 | 0.862 |
-
-| Selected stage | Nominal interval | Observed coverage | Covered / total | 95% Wilson bounds | Mean width |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| Early | 90% | 89.2% | 116 / 130 | 82.7%–93.5% | 8.983 |
-| Updated | 90% | 98.5% | 128 / 130 | 94.6%–99.6% | 3.985 |
-
-The updated method **is the latest-grade baseline**: its point estimate equals G2. It won training-only validation; no extra ML value over that baseline is claimed. Early MAE did not materially improve over Phase 1, so the simpler linear model was retained. The broad early interval limits individual usefulness.
-
-**The test set has already been inspected. These results are a reused historical audit, not fresh independent validation.** The split remains 389 training / 130 calibration / 130 audit rows with seed 42, preprocessing inside training folds, and a predeclared simplicity-aware selection rule. G3 and full-year absences never enter predictors. Early questionnaire timing remains retrospective.
-
-Conformal intervals target marginal coverage under exchangeability, not personal or subgroup guarantees. The early age 18–22 group covered only **21/28 outcomes (75%)**. Input-support screens are heuristics and cannot establish applicability to a new institution. No prospective, external, fairness, or causal validation is claimed. Do not use this application for admissions, discipline, grading, or other high-stakes decisions.
-
-[Full methodology](reports/methodology.md) · [Generated ML audit](reports/ml_audit.md) · [Metrics](reports/metrics.json) · [Historical snapshots](reports/phase1/)
-
-## Research reproduction and tests
-
-The full experiment is separate from app initialization:
-
-```powershell
-.\.venv\Scripts\python -m src.train
-.\.venv\Scripts\python -m pytest -q
-.\.venv\Scripts\python -m compileall -q src app
-.\.venv\Scripts\python -m pip check
-```
-
-Training compares the original candidates and Ridge grid, regenerates numerical reports, and writes ignored research `.joblib` files. Those files are never loaded by the application. Generated experiment reports use canonical LF line endings. The recorded [seven-report reproducibility comparison](reports/reproducibility-iteration2.json) belongs to the documented experiment environment; small numerical/version differences on other systems are possible.
-
-The release merge commit [`e4578a6`](https://github.com/zaki-coding/student-grade-predictor-/commit/e4578a6fdc51463e1d5ff73bb5d50a5bf24333b9) passed **all four** [Windows/Ubuntu, Python 3.11/3.13 CI jobs](https://github.com/zaki-coding/student-grade-predictor-/actions/runs/42296289289). The release preparation recorded **163 passing tests** in both working and clean-install environments; see [release validation](docs/release-validation.md). CI exercises the cold-checkout suite before the separate research-training step. The hosted app has also been tested with synthetic demo data, but these checks do not establish model validity for new student populations.
-
-## Privacy and saved work
-
-Use **synthetic demonstration data** for a public portfolio visit. When run locally, inputs are processed on the local machine. When hosted, course marks, uploaded JSON, and prediction inputs are transmitted to the app server and processed by the hosting provider; they do not stay solely on your device.
-
-The application uses temporary session memory and upload/download buffers. It does not intentionally persist personal grades to server disk, log input contents, add accounts, or introduce analytics trackers. The server operator and hosting provider can still have infrastructure access and their own retention policies; the app does not promise immediate deletion or confidential download URLs. A session is not durable storage. Export your workspace before closing and keep downloaded JSON/CSV/Markdown files private.
-
-Workspace uploads are limited to **1 MB**, validated before replacing the current session, and cannot supply model artifacts. Shared caches contain public model resources only. See [the complete privacy explanation](docs/privacy.md).
-
-## Screenshots and release review
-
-| Exact grade planning | Prediction stage and uncertainty |
+| Path | Contents |
 | --- | --- |
-| ![Grade Calculator](docs/screenshots/iteration2/calculator.jpg) | ![Prediction result](docs/screenshots/iteration2/predictor.jpg) |
+| `app/` | Streamlit pages, workspace validation, and shared UI components |
+| `src/` | Grade and GPA calculations, CSV tools, prediction, and research code |
+| `resources/` | Bundled data and approved prediction snapshots |
+| `tests/` | Calculation, import, model, and Streamlit workflow tests |
+| `docs/` and `reports/` | Usage guides, evaluation results, and development history |
 
-[Model audit view](docs/screenshots/iteration2/insights.jpg) · [Mobile view](docs/screenshots/iteration2/mobile.jpg)
+Run the suite with `python -m pytest`. Run the version 3 experiment with `python -m src.development_evaluation`. [GitHub Actions](https://github.com/zaki-coding/student-grade-predictor-/actions/workflows/quality.yml) runs the tests on Windows and Ubuntu. See the [architecture notes](docs/architecture.md) for how the modules fit together and the [deployment notes](docs/deployment.md) for the hosted entry point.
 
-The public application is an educational portfolio demonstration, not validated personal academic forecasting. The [deployment checklist](docs/deployment.md) documents the release and ongoing safeguards. **Renaming the repository to `student-success-ai` remains optional** and has not been performed.
+## Privacy and data
 
-Code: [MIT](LICENSE). Data and derived reports: CC BY 4.0 with [third-party notices](docs/third-party-notices.md). Full study scheduling, new datasets, and monitoring remain future work.
+Course records, uploads, and prediction inputs are processed in session memory. On the hosted app, they are sent to the hosting server. Use synthetic data for public demos and export your workspace to keep it between sessions. See [privacy details](docs/privacy.md).
+
+The prediction demo uses 649 Portuguese-language course records from two secondary schools. The dataset is Cortez (2008), *Student Performance*, UCI Machine Learning Repository, licensed CC BY 4.0. See the [dataset source](https://doi.org/10.24432/C5TG7T), [dataset card](docs/data-card.md), and [third-party notices](docs/third-party-notices.md). Project code uses the [MIT license](LICENSE).

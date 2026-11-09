@@ -103,4 +103,3 @@ def import_assessments(content, workspace):
         records.append(record)
     return _validated(workspace, {**workspace["courses"], **replacements},
                       workspace["targets"], workspace["planning"]["credits"])
-

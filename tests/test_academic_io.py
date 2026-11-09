@@ -114,4 +114,3 @@ def test_semester_and_gpa_exports_include_context_and_escape_labels():
     assert report[0]["Grade label"] == "'@A"
     assert report[1]["Name"] == "'" + prior
     assert report[-1]["GPA"] == "3.666667"
-

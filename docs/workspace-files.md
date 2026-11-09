@@ -22,4 +22,3 @@ Statistics,Final exam,Exam,2026-11-15,60,
 Use **Download semester summary (CSV)** for progress, credits and upcoming or overdue deadlines, **Download grade summary (CSV)** for target calculations, and **Download GPA report (CSV)** for credit-weighted GPA and the hypothetical marks currently entered. The reports are for review or sharing. To reopen your editable workspace, save the JSON file.
 
 The app compares deadlines to the date on the computer running Streamlit. Uploads and downloads are limited to 1 MB for workspace JSON, and CSV uploads share that limit. A legacy file close to the limit may open successfully but need fewer rows before it can be saved in the current format. On a hosted instance, use synthetic records for public demos.
-

@@ -1,45 +1,24 @@
-# Deployment and public-release checklist
+# Running and deploying the app
 
-**Hosted URL:** [student-success-ai-zaki.streamlit.app](https://student-success-ai-zaki.streamlit.app/). The application is **public and searchable**, deployed from `main` → `app/Home.py` using Python 3.13.18. Signed-out access, the synthetic demo workspace and both prediction stages were verified. The [GitHub repository](https://github.com/zaki-coding/student-grade-predictor-) is also **public**. Streamlit app sharing and repository visibility remain separate settings.
+## Local and hosted entry points
 
-## How a cold process prepares predictions
+Run `python -m src.local` after installing dependencies. The launcher binds to `127.0.0.1:8501` by default. Set a different local port with `--port 8502`.
 
-The app uses the reviewed resources in `resources/`: the original small UCI Portuguese-course CSV, frozen approved evaluation/prediction snapshots, and a release manifest. Provisioning verifies pinned data/resource checksums, canonical-LF recipe hashes, schema/artifact/release versions, and the exact scikit-learn version before building anything. It constructs only the approved early Linear Regression and updated G2 persistence recipes with the existing fixed train/calibration split. Approved predictions and intervals are checked within the documented numerical tolerance; the audit outcomes are not used to fit, tune or select the model.
+Streamlit Community Cloud uses `app/Home.py` as the entry point. The [public app](https://student-success-ai-zaki.streamlit.app/) was set up from `main` on Python 3.13.18. Dependencies are declared in `pyproject.toml` and installed through the root `requirements.txt`. The hosted platform manages the listener.
 
-Initialization does not read a developer's `data/` cache or ignored `models/*.joblib` files, does not download a model, and does not deserialize pickle/joblib. It does not execute full cross-validation. Both models are cached once per server process behind a lock; failure leaves the calculator usable and can be retried after the underlying resource/configuration issue is corrected. Process restarts prepare the public resources again. Only public model resources are shared, never user workspaces or inputs.
+## Prediction setup
 
-The reviewed source repository is the trust boundary. These checks detect corruption and mismatched releases, not a malicious actor who controls the entire application and can replace its code and checksum manifest. Do not accept external model uploads or refresh manifest hashes blindly after a mismatch. Research `python -m src.train` output remains separate from the frozen release snapshots.
+At first use, the app verifies the bundled dataset, approved metrics and predictions, recipe checksums, and the pinned scikit-learn version. It then fits the approved early linear regression and G2 persistence recipes on the original training rows and calibrates the intervals on the original calibration rows. The historical audit predictions are checked for parity after fitting.
 
-## Local use
+The process cache holds public model resources. The app does not load pickle or joblib files, download models, or require a local research dataset. If model setup fails, the academic tools remain available. Check the bundled resources and dependency versions before retrying. Checksums detect inconsistent files inside the reviewed source checkout. They cannot protect a deployment whose source and expected hashes can both be changed by an attacker.
 
-Use the documented environment installation, then:
+The historical training command, `python -m src.train`, regenerates the older research reports and writes ignored joblib files. Use a separate checkout when reproducing the historical run so the tracked reports in your working copy stay intact. The version 3 development command, `python -m src.development_evaluation`, reads bundled data and prints its results without writing files.
 
-```text
-python -m src.local
-```
+## After a deployment change
 
-This portable launcher adds a loopback-only address and serves the app at `http://127.0.0.1:8501/`. Optional `--port 8502` selects a different local port. Shared `.streamlit/config.toml` deliberately has no fixed server address because Community Cloud manages its own listener.
+1. Open the app while signed out. Load the synthetic workspace and check the dashboard, planner, grade scenarios, and GPA.
+2. Try the CSV imports, JSON restore, and report downloads. Repeat the main workflows at a narrow width.
+3. Run both prediction stages and check the historical metrics and warnings. Test the What-If Lab with synthetic profiles.
+4. Check the [privacy notice](privacy.md). Keep Streamlit's normal XSRF and CORS protections enabled.
 
-## Current Community Cloud settings and public maintenance checklist
-
-The existing deployment uses `main`, `app/Home.py` and Python **3.13.18**. Do not use the local-only launcher as the hosted entrypoint. Required dependency files are in the repository root. The app does not need credentials, model downloads or developer-local artifacts.
-
-1. **Public access verified:** Streamlit is set to public and searchable, and a signed-out session loaded the dashboard, two synthetic demo courses and both AI prediction stages. Recheck signed-out access after material deployment changes.
-2. Test the site while signed out, using **synthetic demo data**. Verify the Overview demo, calculator and targets, both prediction stages, What-If Lab, JSON workspace restore/export, CSV summaries, Markdown prediction reports, and narrow-screen layout.
-3. Charts rendered interactively during hosted testing. The optional built-in Plotly **PNG chart download is unverified** after browser-automation attempts. Test it manually in a normal browser if it matters; do not label it broken without reproducing a failure.
-4. Confirm the app's privacy notices clearly disclose that hosted grade inputs are processed on the app server. Recommend the synthetic demo rather than uploading private educational records.
-5. **Public source verified:** The GitHub repository is public. Consider adding the hosted URL to the repository About section and pinning it on the GitHub profile. Keep model limitations and privacy notices prominent.
-
-Leave XSRF/CORS protections enabled. The app disables Streamlit usage statistics, hides raw client exception details and limits workspace JSON uploads to 1 MB. It adds no accounts, analytics service, or persistent grade database.
-
-Community Cloud's dependency file conventions, Python selection and repository/entrypoint setup are documented in [official dependency guidance](https://docs.streamlit.io/deploy/streamlit-community-cloud/deploy-your-app/app-dependencies) and [deployment guidance](https://docs.streamlit.io/deploy/streamlit-community-cloud/deploy-your-app/deploy).
-
-## Validation status
-
-The release merge commit [`e4578a6`](https://github.com/zaki-coding/student-grade-predictor-/commit/e4578a6fdc51463e1d5ff73bb5d50a5bf24333b9) passed [all four CI jobs](https://github.com/zaki-coding/student-grade-predictor-/actions/runs/42296289289); the subsequent documentation commit [also passed CI](https://github.com/zaki-coding/student-grade-predictor-/actions/runs/42304164557). Clean-install and cold-start evidence is recorded in [release validation](release-validation.md). Separately, real hosted and signed-out checks passed using synthetic data.
-
-## Recommendation
-
-The hosted application and source are **public** as a clearly labeled **educational research demonstration**. Recommend the synthetic workspace. Scientific gaps remain unchanged: reused audit data, retrospective predictor timing, weak early precision, small-group coverage failures, unverified external validity and no completed fairness/user study. Do not advertise personalized reliability.
-
-Renaming the repository to `student-success-ai` would align it with the product name and improve presentation. It is optional; no automatic rename has been performed. If approved later, update README, Actions and hosted-app links after GitHub redirects are verified.
+The previous release's hosted and CI checks are recorded in [release validation](release-validation.md). For Community Cloud setup, see Streamlit's [deployment guide](https://docs.streamlit.io/deploy/streamlit-community-cloud/deploy-your-app/deploy) and [dependency guide](https://docs.streamlit.io/deploy/streamlit-community-cloud/deploy-your-app/app-dependencies).
