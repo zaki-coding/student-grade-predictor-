@@ -7,7 +7,8 @@ from streamlit.testing.v1 import AppTest
 ROOT = Path(__file__).resolve().parents[1]
 
 
-@pytest.mark.parametrize("page", ["Overview", "Grade Calculator", "AI Predictor", "What-If Lab", "Model Insights"])
+@pytest.mark.parametrize("page", ["Overview", "Semester Planner", "Grade Calculator", "GPA Calculator",
+                                  "AI Predictor", "What-If Lab", "Model Insights"])
 def test_sections_render_without_exceptions(page):
     app = AppTest.from_file(str(ROOT / "app" / "Home.py"), default_timeout=30).run()
     assert not app.exception

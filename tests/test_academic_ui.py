@@ -51,3 +51,16 @@ def test_gpa_includes_completed_and_prior_credits_without_hypothetical_marks():
     visitor.number_input(key="academic_gpa_target").set_value(4.0).run()
     assert any("would require 7.00" in message.value for message in visitor.warning)
 
+
+
+
+def test_demo_dashboard_shows_deadlines_and_course_priorities():
+    visitor = app()
+    visitor.button(key="load_demo").click().run()
+    assert not visitor.exception
+    assert any("are overdue" in message.value for message in visitor.warning)
+    assert any("out of reach" in message.value for message in visitor.warning)
+    assert any("Highest-weight assessment" in item.value for item in visitor.caption)
+    assert any(widget.label == "Cumulative GPA" and widget.value == "3.25 / 4" for widget in visitor.metric)
+    downloads = [widget.label for widget in visitor.get("download_button")]
+    assert "Download semester summary (CSV)" in downloads

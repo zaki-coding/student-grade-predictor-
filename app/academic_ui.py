@@ -1,17 +1,17 @@
 """Streamlit views for course scenarios, deadlines, and GPA."""
 
 from datetime import date
-import json
 import math
 
 import pandas as pd
 import plotly.express as px
 import streamlit as st
 
-from app.components import chart
+from app.components import PALETTE, chart
 from app.persistence import workspace_payload
-from src.calculator import calculate, classify, project_individual, required_assessment_score
-from src.gpa import MAX_CREDITS, gpa_summary, points_for_grade, required_future_gpa
+from src.calculator import classify, project_individual, required_assessment_score
+from src.exports import gpa_report_csv, semester_summary_csv
+from src.gpa import MAX_CREDITS, course_gpa_rows, gpa_summary, points_for_grade, required_future_gpa
 from src.planner import semester_summary
 
 
@@ -41,11 +41,17 @@ def individual_scenarios(records, target, course_key):
         )
         scores = {label: overrides[label].dropna().to_dict() for label in labels}
         results = [project_individual(records, scores[label], fallback, target) for label in labels]
-        st.dataframe(pd.DataFrame([
+        comparison = pd.DataFrame([
             {"Scenario": label, "Final grade (%)": round(result["final_grade"], 2),
              "Meets target": "Yes" if result["target_met"] else "No"}
             for label, result in zip(labels, results)
-        ]), hide_index=True, width="stretch")
+        ])
+        st.dataframe(comparison, hide_index=True, width="stretch")
+        if comparison["Final grade (%)"].nunique() > 1:
+            figure = px.bar(comparison, x="Scenario", y="Final grade (%)", hover_data=["Meets target"],
+                            title="Projected grades by scenario", range_y=[0, 100])
+            figure.add_hline(y=target, line_dash="dash", line_color=PALETTE[3], annotation_text="Target")
+            chart(figure)
 
         st.subheader("Minimum score on one assessment")
         index = st.selectbox(
@@ -84,7 +90,8 @@ def planner_page(course_editor, open_calculator):
     st.caption("Manage courses, weights, due dates and marks. The grade calculator uses these same assessments.")
     courses, targets = st.session_state["courses"], st.session_state["targets"]
     credits = st.session_state["planning"]["credits"]
-    summary = semester_summary(courses, targets, date.today())
+    today = date.today()
+    summary = semester_summary(courses, targets, today)
     a, b, c = st.columns(3)
     a.metric("Courses", len(courses))
     b.metric("Credit hours", f"{sum(credits.values()):g}")
@@ -109,8 +116,9 @@ def planner_page(course_editor, open_calculator):
     ]), hide_index=True, width="stretch")
     st.subheader("Edit courses and assessments")
     course = course_editor()
-    if course is not None:
-        st.button("Open this course in the grade calculator", on_click=open_calculator, args=(course,))
+    st.button("Open this course in the grade calculator", on_click=open_calculator, args=(course,))
+    st.download_button("Download semester summary (CSV)", semester_summary_csv(courses, targets, credits, today),
+                       file_name="student-success-semester-summary.csv", mime="text/csv")
 
 
 def _workspace_with_planning(planning):
@@ -129,7 +137,14 @@ def _edit_gpa_settings(planning):
             saved_maximum = float(planning["gpa_scale"]["maximum"])
             maximum = st.number_input("Maximum GPA", min_value=min(0.01, saved_maximum),
                                       max_value=100.0, value=saved_maximum, step=0.1)
-            mapping = st.text_area("Grade points (JSON)", json.dumps(planning["gpa_scale"]["points"], indent=2))
+            scale_rows = pd.DataFrame(planning["gpa_scale"]["points"].items(), columns=["Grade label", "Points"])
+            scale_rows["Points"] = scale_rows["Points"].astype(float)
+            mapping = st.data_editor(
+                scale_rows, key=f"academic_gpa_scale_{revision}", num_rows="dynamic", hide_index=True, width="stretch",
+                column_config={
+                    "Grade label": st.column_config.TextColumn(required=True),
+                    "Points": st.column_config.NumberColumn(min_value=0, max_value=100, required=True),
+                })
             st.caption("Add one row for each previous semester. Enter credit hours and its GPA on the scale above.")
             history = st.data_editor(frame, num_rows="dynamic", hide_index=True, width="stretch",
                 column_config={
@@ -140,7 +155,13 @@ def _edit_gpa_settings(planning):
             save = st.form_submit_button("Save GPA settings", type="primary")
         if save:
             try:
-                candidate = {**planning, "gpa_scale": {"maximum": maximum, "points": json.loads(mapping)},
+                labels = mapping["Grade label"].tolist()
+                if any(not isinstance(label, str) or not label.strip() for label in labels):
+                    raise ValueError("Enter a label for each grade.")
+                if len(set(labels)) != len(labels):
+                    raise ValueError("Use each grade label only once.")
+                points = dict(zip(labels, mapping["Points"]))
+                candidate = {**planning, "gpa_scale": {"maximum": maximum, "points": points},
                              "gpa_history": history.to_dict("records")}
                 clean = _workspace_with_planning(candidate)
             except (ValueError, TypeError) as exc:
@@ -165,48 +186,38 @@ def gpa_page():
     scale, history = planning["gpa_scale"], planning["gpa_history"]
     maximum = scale["maximum"]
     _edit_gpa_settings(planning)
-    actual, projected, unfinished_credits = [], [], 0.0
     st.subheader("Current semester")
-    records = []
-    for course, assessments in courses.items():
-        result = calculate(assessments)
-        grade = min(100.0, result["contribution"]) if result["remaining_weight"] <= 1e-9 else None
-        records.append({"Course": course, "Credit hours": planning["credits"][course],
-                        "Final grade (%)": grade, "Hypothetical final (%)": float("nan")})
-    if records:
-        frame = pd.DataFrame(records)
-        frame["Final grade (%)"] = frame["Final grade (%)"].astype(float)
-        revision = st.session_state.get("editor_revision", 0)
-        estimates = st.data_editor(
-            frame, key=f"academic_gpa_estimates_{revision}", hide_index=True, width="stretch",
-            disabled=["Course", "Credit hours", "Final grade (%)"],
-            column_config={"Hypothetical final (%)": st.column_config.NumberColumn(min_value=0, max_value=100, step=0.1)},
-        ).to_dict("records")
-        st.caption("A final grade appears when all 100% of the course weight has a mark. Enter hypothetical percentages for courses still in progress.")
-    else:
-        st.info("Add courses in the semester planner to calculate a semester GPA.")
-        estimates = []
-    missing = set()
-    unmapped_completed = False
-    for row in estimates:
-        credits, grade = row["Credit hours"], row["Final grade (%)"]
-        hypothetical = pd.isna(grade)
-        if hypothetical:
-            unfinished_credits += credits
-            grade = row["Hypothetical final (%)"]
-        if pd.isna(grade):
+    rows = course_gpa_rows(courses, planning["credits"], thresholds, scale)
+    frame = pd.DataFrame([
+        {"Course": row["course"], "Credit hours": row["credits"], "Final grade (%)": row["grade"],
+         "Grade label": row["label"], "Grade points": row["gpa"], "Hypothetical final (%)": float("nan")}
+        for row in rows
+    ])
+    revision = st.session_state.get("editor_revision", 0)
+    estimates = st.data_editor(
+        frame, key=f"academic_gpa_estimates_{revision}", hide_index=True, width="stretch",
+        disabled=["Course", "Credit hours", "Final grade (%)", "Grade label", "Grade points"],
+        column_config={"Hypothetical final (%)": st.column_config.NumberColumn(min_value=0, max_value=100, step=0.1)},
+    )
+    st.caption("A final grade appears when all course weight has a mark. Enter hypothetical percentages for courses in progress.")
+    actual = [row for row in rows if row["gpa"] is not None]
+    missing = {row["label"] for row in rows if row["grade"] is not None and row["gpa"] is None}
+    unmapped_completed = bool(missing)
+    hypothetical = []
+    unfinished_credits = 0.0
+    for row, estimate in zip(rows, estimates["Hypothetical final (%)"]):
+        if row["grade"] is not None:
             continue
-        label = classify(grade, thresholds)
+        unfinished_credits += row["credits"]
+        if pd.isna(estimate):
+            continue
+        label = classify(estimate, thresholds)
         try:
             points = points_for_grade(label, scale)
         except ValueError:
             missing.add(label)
-            unmapped_completed |= not hypothetical
-            continue
-        entry = {"credits": credits, "gpa": points}
-        if not hypothetical:
-            actual.append(entry)
-        projected.append(entry)
+        else:
+            hypothetical.append({**row, "grade": estimate, "label": label, "gpa": points})
     if missing:
         st.warning("Add grade points for these labels to include the affected courses: " + ", ".join(sorted(missing)))
     semester = gpa_summary(actual, maximum)
@@ -216,13 +227,18 @@ def gpa_page():
         _gpa_metric("Semester GPA", semester, maximum)
     with b:
         _gpa_metric("Cumulative GPA", cumulative, maximum)
-    if len(projected) > len(actual):
+    if len(actual) != len(rows):
+        st.caption(f"Recorded semester GPA includes {len(actual)} of {len(rows)} courses with final grades mapped to the GPA scale.")
+    if hypothetical:
+        projected = actual + hypothetical
         a, b = st.columns(2)
         with a:
             _gpa_metric("Hypothetical semester GPA", gpa_summary(projected, maximum), maximum)
         with b:
             _gpa_metric("Hypothetical cumulative GPA", gpa_summary(history + projected, maximum), maximum)
-        st.caption("The hypothetical results include recorded grades and estimates entered above. Courses without either are excluded.")
+        st.caption("The hypothetical results include recorded grades and estimates entered above.")
+    st.download_button("Download GPA report (CSV)", gpa_report_csv(rows, history, maximum, hypothetical),
+                       file_name="student-success-gpa-report.csv", mime="text/csv")
     st.subheader("Plan a cumulative GPA target")
     a, b = st.columns(2)
     target = a.number_input("Target cumulative GPA", 0.0, float(maximum), min(3.0, float(maximum)),

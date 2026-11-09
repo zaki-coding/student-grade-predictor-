@@ -19,11 +19,13 @@ import streamlit as st
 
 from src.calculator import calculate, classify, project
 from src.gpa import MAX_CREDITS
-from src.planner import ASSESSMENT_KINDS, default_planning
+from src.planner import ASSESSMENT_KINDS, DEFAULT_CREDITS, default_planning
 from app.academic_ui import gpa_page, individual_scenarios, planner_page
-from app.persistence import workspace_payload, decode_workspace_bytes
+from app.dashboard import dashboard
+from app.persistence import decode_workspace_bytes, encode_workspace_bytes, workspace_payload
+from src.academic_io import import_assessments, import_courses
 from src.exports import course_summary_csv, prediction_report
-from app.components import PALETTE, apply_style, chart, header, prediction_result, reliability_messages
+from app.components import PALETTE, apply_style, chart, prediction_result, reliability_messages
 
 st.set_page_config(page_title="Student Success AI", page_icon="🎓", layout="wide")
 
@@ -66,28 +68,36 @@ def current_workspace(courses=None, thresholds=None, planning=None):
     )
 
 
-def replace_session_workspace(clean):
+def replace_session_workspace(clean, *, reset_prediction=True):
     """Apply an already validated workspace only to the current visitor session."""
     st.session_state["courses"] = clean["courses"]
     st.session_state["targets"] = clean["targets"]
     st.session_state["thresholds"] = clean["thresholds"]
     st.session_state["planning"] = clean.get("planning", default_planning(clean["courses"]))
     for key in list(st.session_state):
-        if key in {"threshold_editor", "last_prediction"} or key.startswith(("target_", "scenario_", "assessments_", "assessment_form_", "academic_")):
+        if key == "threshold_editor" or key.startswith(("target_", "scenario_", "assessments_", "assessment_form_", "academic_")):
             st.session_state.pop(key, None)
-    st.session_state["course_select"] = next(iter(clean["courses"]), None)
+    if reset_prediction:
+        st.session_state.pop("last_prediction", None)
+    selected = st.session_state.get("course_select") if not reset_prediction else None
+    st.session_state["course_select"] = selected if selected in clean["courses"] else next(iter(clean["courses"]))
     st.session_state["editor_revision"] = st.session_state.get("editor_revision", 0) + 1
 
 
 def load_demo_workspace():
     try:
-        payload = (ROOT / "docs" / "example-workspace.json").read_bytes()
+        payload = (ROOT / "docs" / "example-semester.json").read_bytes()
         clean = decode_workspace_bytes(payload)
+        shift = date.today() - date(2026, 11, 9)
+        for assessments in clean["courses"].values():
+            for assessment in assessments:
+                if assessment.get("due"):
+                    assessment["due"] = (date.fromisoformat(assessment["due"]) + shift).isoformat()
     except (OSError, ValueError):
         st.session_state["workspace_notice"] = "The demo workspace could not be loaded. Your current workspace was kept."
         return
     replace_session_workspace(clean)
-    st.session_state["workspace_notice"] = "Loaded the synthetic demo workspace for this session. These are demonstration marks, not real student records."
+    st.session_state["workspace_notice"] = "Loaded the sample semester with synthetic courses and marks."
 
 
 def privacy_notice():
@@ -144,119 +154,99 @@ def get_model_api():
         return None
 
 
-def dashboard():
-    courses, targets = st.session_state["courses"], st.session_state["targets"]
-    summaries = [(name, calculate(records, targets[name])) for name,records in courses.items()]
-    completed = sum(item[1]["completed_weight"] > 0 for item in summaries)
-    a,b,c = st.columns(3)
-    a.metric("Courses in your workspace", str(len(courses)))
-    b.metric("Courses with recorded marks", str(completed))
-    c.metric("Targets within mathematical reach", f"{sum(r['target_possible'] for _,r in summaries)} / {len(courses)}")
-    st.subheader("Your course dashboard")
-    st.caption("EXACT ARITHMETIC • Percentages based on saved assessments. No machine learning is used here.")
-    if not completed:
-        st.info("Your workspace is ready. Open the Grade Calculator, record an assessment mark, then save to see your progress here. "
-                "Blank marks mean unfinished work; they are never treated as achieved zeroes.")
-    else:
-        rows=[]
-        for name,r in summaries:
-            rows.append({"Course":name,"Target (%)":targets[name],"Earned contribution":round(r["contribution"],2),
-                         "Completed weight (%)":r["completed_weight"],"Required remaining average (%)":
-                         None if r["required_average"] is None else round(r["required_average"],2),
-                         "Target feasible":r["target_possible"]})
-        st.dataframe(pd.DataFrame(rows),hide_index=True,width="stretch")
-        fig=go.Figure()
-        fig.add_trace(go.Bar(y=[n for n,_ in summaries],x=[r["contribution"] for _,r in summaries],
-                            orientation="h",name="Earned contribution",marker_color=PALETTE[0]))
-        fig.add_trace(go.Scatter(y=[n for n,_ in summaries],x=[targets[n] for n,_ in summaries],mode="markers",
-                                marker=dict(symbol="diamond",size=12,color=PALETTE[3]),name="Target"))
-        fig.update_layout(title="Earned grade points and course targets", xaxis=dict(title="Course percentage points",range=[0,100]),
-                          height=max(280,70*len(summaries)))
-        chart(fig)
-    st.download_button("Download grade summary (CSV)",course_summary_csv(courses, targets, st.session_state["planning"]),
-                       file_name="student-success-grade-summary.csv",mime="text/csv",key="dashboard_csv")
-    st.caption("Save your workspace from the Grade Calculator to retain courses, targets and grading thresholds between sessions.")
-
-
 def overview():
-    header("YOUR ACADEMIC ANALYTICS WORKSPACE", "Make every assessment count.",
-           "A clearer view of where you stand, what comes next, and what the data can tell you.")
-    st.button("Load Demo Workspace", key="load_demo", type="primary", on_click=load_demo_workspace)
-    st.caption("One click loads synthetic demonstration courses. This replaces this session's courses, targets and grading thresholds; export your current workspace first.")
+    st.title("Semester overview")
+    st.caption("Track marks, deadlines and GPA from the courses in this session.")
+    actions = st.columns(3)
+    for column, page in zip(actions, ("Semester Planner", "Grade Calculator", "GPA Calculator")):
+        column.button(f"Open {page}", key=f"open_{page}", width="stretch",
+                      on_click=navigate, args=(page,))
+    with st.expander("Try a sample semester"):
+        st.caption("The demo uses synthetic grades. It replaces your workspace for this session.")
+        st.button("Load Demo Workspace", key="load_demo", on_click=load_demo_workspace)
     if st.session_state.get("workspace_notice"):
         st.info(st.session_state.pop("workspace_notice"))
-    dashboard()
-    st.markdown('''<div class="hero"><div class="eyebrow">STUDENT SUCCESS AI</div>
-    <h2>Know your grades.<br>Explore your possibilities.</h2>
-    <p>Plan with precise grade calculations, explore statistical estimates, and inspect the evidence
-    behind every model. Three distinct tools, one transparent workspace.</p></div>''', unsafe_allow_html=True)
-    cols = st.columns(3)
-    cards = [
-        ("01 / EXACT CALCULATION", "Grade Calculator", "Organize courses, track assessment contributions, and work out the average mark needed for your target."),
-        ("02 / STATISTICAL ESTIMATE", "AI Predictor", "Estimate final Portuguese-course grades with a reproducible model and a calibrated prediction interval."),
-        ("03 / HYPOTHETICAL COMPARISON", "What-If Lab", "Adjust supported inputs to see how model outputs differ. Explore scenarios without assuming cause and effect."),
-    ]
-    for col, (tag, title, body) in zip(cols, cards):
-        with col:
-            st.markdown(f'<div class="card"><span class="tag">{tag}</span><h3>{title}</h3><p>{body}</p></div>', unsafe_allow_html=True)
-            st.button(f"Open {title}", key=f"open_{title}", width="stretch",
-                      on_click=navigate, args=(title,))
-    st.divider()
-    left, right = st.columns([1.3, 1])
-    with left:
-        st.subheader("Evidence you can inspect")
-        st.write("The Model Insights page exposes the dataset, validation approach, measured errors, "
-                 "and global feature importance. Predictions retain the dataset’s original 0–20 scale.")
-        st.caption("Research demonstration • Historical data from two Portuguese secondary schools • Not validated for your university")
-    with right:
-        st.subheader("Understand where inputs go")
-        st.write("Course records, targets and grading thresholds live in temporary server memory for your current app session. Export a versioned workspace JSON file to save them "
-                 "on your device, then import it when you return. On a hosted instance, inputs are sent to the app server and hosting provider; use synthetic data for public demonstrations.")
+    dashboard(st.session_state["courses"], st.session_state["targets"],
+              st.session_state["thresholds"], st.session_state["planning"])
+
+
+def _workspace_files():
+    st.caption("Files are processed in session memory. A hosted app sends uploads to the hosting provider. Use synthetic records on public demos. File size limit: 1 MB.")
+    workspace, courses, assessments = st.tabs(["Workspace JSON", "Courses CSV", "Assessments CSV"])
+    with workspace:
+        st.caption("Save courses, due dates and GPA settings in one file. Versions 1, 2 and 3 can be restored.")
+        try:
+            exported = encode_workspace_bytes(current_workspace())
+        except ValueError as exc:
+            st.warning(str(exc))
+        else:
+            st.download_button("Export all courses (JSON)", exported,
+                               file_name="student-success-courses.json", mime="application/json")
+        uploaded = st.file_uploader("Import a course export", type="json")
+        if st.button("Import and replace current courses", disabled=uploaded is None):
+            try:
+                clean = decode_workspace_bytes(uploaded.getvalue())
+            except ValueError as exc:
+                st.error(str(exc))
+            else:
+                replace_session_workspace(clean)
+                st.session_state["workspace_notice"] = "Workspace restored."
+                st.rerun()
+    with courses:
+        st.caption("Add new courses. Leave credits or target blank to use 3 credit hours or a 70% target.")
+        st.download_button("Download course CSV template", "course,credits,target\nStatistics,3,75\n",
+                           file_name="course-template.csv", mime="text/csv")
+        uploaded = st.file_uploader("Import courses (CSV)", type="csv")
+        if st.button("Add courses from CSV", disabled=uploaded is None):
+            _apply_csv(uploaded, import_courses, "Courses added.")
+    with assessments:
+        st.caption("Replace the assessments for each course listed in the file. Other courses keep their assessments. Use YYYY-MM-DD for dates and leave marks blank for unfinished work.")
+        st.download_button("Download assessment CSV template",
+                           "course,name,kind,due,weight,mark\nStatistics,Midterm,Exam,,40,80\nStatistics,Final exam,Exam,,60,\n",
+                           file_name="assessment-template.csv", mime="text/csv")
+        uploaded = st.file_uploader("Import assessments (CSV)", type="csv")
+        if st.button("Replace assessments in listed courses", disabled=uploaded is None):
+            _apply_csv(uploaded, import_assessments, "Assessments replaced for the listed courses.")
+
+
+def _apply_csv(uploaded, importer, success_message):
+    try:
+        clean = importer(uploaded.getvalue(), current_workspace())
+    except ValueError as exc:
+        st.error(f"{exc} Your workspace was kept.")
+    else:
+        replace_session_workspace(clean, reset_prediction=False)
+        st.session_state["workspace_notice"] = success_message
+        st.rerun()
 
 
 def course_editor():
     """Edit the same course records from the planner and grade calculator."""
     courses = st.session_state["courses"]
     planning = st.session_state["planning"]
+    if st.session_state.get("workspace_notice"):
+        st.success(st.session_state.pop("workspace_notice"))
     with st.expander("Manage courses & local files"):
-        a, b = st.columns(2)
-        with a:
-            with st.form("new_course", clear_on_submit=True):
-                name = st.text_input("New course name", max_chars=100)
-                if st.form_submit_button("Add course"):
-                    name = name.strip()
-                    if not name:
-                        st.error("Enter a course name.")
-                    elif name in courses:
-                        st.error("That course already exists.")
-                    elif len(courses) >= 50:
-                        st.error("A workspace supports up to 50 courses.")
-                    else:
-                        courses[name] = []
-                        st.session_state["targets"][name] = 70.0
-                        planning["credits"][name] = default_planning({name: []})["credits"][name]
-                        st.session_state["course_select"] = name
-                        st.session_state["editor_revision"] = st.session_state.get("editor_revision", 0) + 1
-                        st.rerun()
-        with b:
-            st.download_button("Export all courses (JSON)",
-                               json.dumps(current_workspace(), indent=2, allow_nan=False),
-                               file_name="student-success-courses.json", mime="application/json")
-            st.caption("Uploads are processed in server session memory. On hosted instances, the file is transmitted to the host. Use synthetic data for public demos. Maximum workspace size: 1 MB.")
-            uploaded = st.file_uploader("Import a course export", type="json")
-            if st.button("Import and replace current courses", disabled=uploaded is None):
-                try:
-                    clean = decode_workspace_bytes(uploaded.getvalue())
-                    replace_session_workspace(clean)
+        with st.form("new_course", clear_on_submit=True):
+            name = st.text_input("New course name", max_chars=100)
+            if st.form_submit_button("Add course"):
+                name = name.strip()
+                if not name:
+                    st.error("Enter a course name.")
+                elif name in courses:
+                    st.error("That course already exists.")
+                elif len(courses) >= 50:
+                    st.error("A workspace supports up to 50 courses.")
+                else:
+                    courses[name] = []
+                    st.session_state["targets"][name] = 70.0
+                    planning["credits"][name] = DEFAULT_CREDITS
+                    st.session_state["course_select"] = name
+                    st.session_state["editor_revision"] = st.session_state.get("editor_revision", 0) + 1
                     st.rerun()
-                except (ValueError, TypeError, KeyError, UnicodeError):
-                    st.error("Import rejected: use a supported JSON workspace no larger than 1 MB with valid grades and weights. Your current workspace was kept.")
-        st.caption("Export before closing the app to save your courses, deadlines and GPA settings. Importing a workspace replaces your current records. Older exports still work.")
-    if not courses:
-        st.info("Add a course to enter assessments and calculate a grade.")
-        return None
+        _workspace_files()
     course = st.selectbox("Course", list(courses), key="course_select")
-    top_a, top_b = st.columns([4, 1])
+    top_a, top_b = st.columns([2, 1])
     with top_a:
         st.caption("Add a row with the + control. Select a row to delete it. Leave a mark blank for unfinished work.")
     with top_b:
@@ -277,8 +267,8 @@ def course_editor():
         edited = st.data_editor(frame, num_rows="dynamic", hide_index=True, width="stretch",
             key=f"assessments_{course_key}_{revision}", column_config={
                 "name": st.column_config.TextColumn("Assessment", required=True),
-                "weight": st.column_config.NumberColumn("Weight (%)", min_value=0, max_value=100, step=1, required=True),
-                "mark": st.column_config.NumberColumn("Achieved mark (%)", min_value=0, max_value=100, step=1),
+                "weight": st.column_config.NumberColumn("Weight (%)", min_value=0, max_value=100, step=0.1, required=True),
+                "mark": st.column_config.NumberColumn("Achieved mark (%)", min_value=0, max_value=100, step=0.1),
                 "kind": st.column_config.SelectboxColumn("Type", options=list(ASSESSMENT_KINDS)),
                 "due": st.column_config.DateColumn("Due date", format="YYYY-MM-DD"),
             })
@@ -318,8 +308,6 @@ def calculator_page():
     st.title("Grade calculator")
     st.caption("Use assessment weights and marks to calculate your grade and plan for your target.")
     course = course_editor()
-    if course is None:
-        return
     courses = st.session_state["courses"]
     records = courses[course]
     target = st.session_state["targets"][course]
@@ -347,8 +335,7 @@ def calculator_page():
     else:
         st.info(f"You need a weighted average of **{required:.1f}%** across all remaining assessment weight "
                 f"to finish with **{target}%**.")
-    st.caption("The required average applies to the combined weight of every unfinished assessment, including "
-               "any weight you have not allocated yet. It does not require the same mark on every assessment.")
+    st.caption("The required average includes unfinished assessments and unallocated course weight.")
     if result["unallocated_weight"] > 0:
         st.warning(f"{result['unallocated_weight']:.1f}% of the course is not assigned to assessments yet. "
                    "It is included in the remaining weight above.")
@@ -358,8 +345,7 @@ def calculator_page():
         scenario = project(records,assumed)
         st.metric("Scenario final grade (exact arithmetic)",f"{scenario['final_grade']:.1f}%",
                   delta=f"{scenario['final_grade']-target:+.1f} points vs target",delta_color="normal")
-        st.caption("This calculation applies the assumed weighted average to every unfinished assessment and any unallocated weight. "
-                   "It is a planning scenario, not a statistical forecast or a guarantee of future marks.")
+        st.caption("This scenario uses one average across all remaining weight.")
         plan = pd.DataFrame({"Remaining average (%)":[40,50,60,70,80,90,100],
                              "Final course grade (%)":[project(records,x)["final_grade"] for x in [40,50,60,70,80,90,100]]})
         fig=px.line(plan,x="Remaining average (%)",y="Final course grade (%)",markers=True,title="Target scenarios for outstanding work")
@@ -372,11 +358,13 @@ def calculator_page():
     st.download_button("Download grade summary (CSV)", course_summary_csv(courses, st.session_state["targets"],
                        st.session_state["planning"]),
                        file_name="student-success-grade-summary.csv",mime="text/csv",key="calculator_csv")
-    if records:
-        contributions = pd.DataFrame(records)
-        contributions["Earned contribution"] = contributions["weight"] * contributions["mark"].fillna(0) / 100
-        chart(px.bar(contributions, x="name", y="Earned contribution", labels={"name": "Assessment"},
-                     title="Completed contributions to your final grade"))
+    contributions = [
+        {"Assessment": f"{i + 1}. {row['name']}", "Earned course points": row["weight"] * row["mark"] / 100}
+        for i, row in enumerate(records) if row["mark"] is not None
+    ]
+    if contributions:
+        chart(px.bar(contributions, x="Assessment", y="Earned course points",
+                     title="Points earned by assessment"))
     with st.expander("Configure grading thresholds"):
         st.caption("Calculator percentages are independent of the ML dataset’s 0–20 scale. Set your own institution’s boundaries.")
         text = st.text_area("Grade boundaries (JSON: label → minimum percentage)",
@@ -437,8 +425,8 @@ def prediction_context(stage):
 
 
 def prediction_page():
-    header("STATISTICAL ESTIMATE", "A prediction with perspective.",
-           "Enter supported inputs to estimate a final Portuguese-course grade. This is a research demonstration.")
+    st.title("AI predictor")
+    st.caption("Estimate the final grade for a profile from the Portuguese secondary-school dataset.")
     api = get_model_api()
     if not api:
         return
@@ -484,8 +472,8 @@ def prediction_page():
 
 
 def scenario_page():
-    header("HYPOTHETICAL COMPARISON", "Explore the what-ifs.",
-           "Compare two valid input profiles using the same fitted model.")
+    st.title("What-if lab")
+    st.caption("Compare how two profiles change a model estimate.")
     st.caption("On a hosted instance, scenario inputs are processed on the app server. Use synthetic profiles for public demonstrations.")
     api = get_model_api()
     if not api:
@@ -545,8 +533,8 @@ def scenario_page():
 
 
 def insights_page():
-    header("TRANSPARENT BY DESIGN", "Behind the prediction.",
-           "Inspect the data, measured errors, and methodological choices behind Student Success AI.")
+    st.title("Model insights")
+    st.caption("Review the dataset, historical evaluation and prediction limits.")
     try:
         from src.provisioning import read_release_resources
         _, release_frame, metrics, release_predictions = read_release_resources()
@@ -686,14 +674,10 @@ def insights_page():
 ensure_workspace()
 
 with st.sidebar:
-    st.markdown("### 🎓 Student Success AI")
-    st.caption("ACADEMIC PERFORMANCE & ANALYSIS")
+    st.markdown("### Student Success AI")
+    page = st.radio("Workspace", PAGES, key="page")
     st.divider()
-    page = st.radio("Workspace", PAGES, key="page", label_visibility="collapsed")
-    st.divider()
-    st.markdown("**Clarity before certainty.**")
-    st.caption("Exact calculations · statistical estimates · hypothetical scenarios")
-    st.caption("Workspace data is session-only. Export JSON to keep courses, targets and thresholds.")
+    st.caption("Export your workspace to save it between sessions.")
     privacy_notice()
 
 {

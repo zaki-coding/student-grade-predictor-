@@ -1,4 +1,5 @@
 """Release UX uses only synthetic records and keeps visitor sessions separate."""
+from datetime import date
 import json
 from pathlib import Path
 import tomllib
@@ -26,8 +27,14 @@ def test_one_click_demo_replaces_only_this_session_and_preserves_example_setting
     visitor.session_state['last_prediction'] = {'private': 'draft'}
     visitor.button(key='load_demo').click().run()
     assert not visitor.exception
-    expected = json.loads((ROOT / 'docs' / 'example-workspace.json').read_text(encoding='utf-8'))
+    expected = json.loads((ROOT / 'docs' / 'example-semester.json').read_text(encoding='utf-8'))
+    shift = date.today() - date(2026, 11, 9)
+    for records in expected['courses'].values():
+        for record in records:
+            if 'due' in record:
+                record['due'] = (date.fromisoformat(record['due']) + shift).isoformat()
     assert visitor.session_state['courses'] == expected['courses']
+    assert visitor.session_state['planning'] == expected['planning']
     assert visitor.session_state['targets'] == expected['targets']
     assert visitor.session_state['thresholds'] == expected['thresholds']
     for key in ['threshold_editor', 'target_stale', 'scenario_stale', 'last_prediction']:
@@ -44,7 +51,7 @@ def test_demo_failure_preserves_workspace_and_does_not_disclose_server_path(monk
     real_read = Path.read_bytes
 
     def unreadable(path):
-        if path.name == 'example-workspace.json':
+        if path.name == 'example-semester.json':
             raise OSError('secret/internal/operator/path')
         return real_read(path)
 
