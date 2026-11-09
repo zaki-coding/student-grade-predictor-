@@ -1,16 +1,26 @@
-"""Validation for user-controlled course exports; no automatic disk persistence."""
+"""Validate user-controlled workspace files before applying them to a session."""
 
-from src.calculator import calculate
+from src.calculator import validate_number, calculate, classify
+from src.gpa import positive_credits, validate_scale
+from src.planner import ASSESSMENT_KINDS, assessment_date, default_planning
+
+
+DEFAULT_THRESHOLDS = {"A": 90, "B": 80, "C": 70, "D": 60, "F": 0}
 
 
 def validate_courses(payload):
-    """Validate the complete import before replacing any session state."""
+    """Read an original version 1 course export."""
     if (not isinstance(payload, dict) or set(payload) != {"version", "courses"}
             or type(payload.get("version")) is not int or payload["version"] != 1):
         raise ValueError("Expected a version 1 course export.")
-    courses = payload.get("courses")
+    return _courses(payload["courses"])
+
+
+def _courses(courses, include_planning=False):
     if not isinstance(courses, dict) or not 1 <= len(courses) <= 50:
         raise ValueError("An export must contain between 1 and 50 courses.")
+    required = {"name", "weight", "mark"}
+    allowed = required | {"kind", "due"} if include_planning else required
     clean = {}
     for name, records in courses.items():
         if not isinstance(name, str) or not name.strip() or len(name) > 100:
@@ -18,20 +28,19 @@ def validate_courses(payload):
         if not isinstance(records, list) or len(records) > 100:
             raise ValueError("Each course must contain a list of at most 100 assessments.")
         for record in records:
-            if not isinstance(record, dict) or set(record) != {"name", "weight", "mark"}:
-                raise ValueError("Each assessment needs exactly name, weight and mark.")
-        if any(not isinstance(record["name"], str) or len(record["name"]) > 200 for record in records):
-            raise ValueError("Assessment names must contain at most 200 characters.")
+            if not isinstance(record, dict) or not required <= set(record) <= allowed:
+                raise ValueError("Each assessment needs a name, weight and mark field.")
+            if not isinstance(record["name"], str) or len(record["name"]) > 200:
+                raise ValueError("Assessment names must contain at most 200 characters.")
+            if record.get("kind", "Other") not in ASSESSMENT_KINDS:
+                raise ValueError("Use Quiz, Assignment, Exam, Project or Other for assessment types.")
+            assessment_date(record.get("due"))
         calculate(records)
         clean[name] = [dict(record) for record in records]
     return clean
 
 
-DEFAULT_THRESHOLDS = {"A": 90, "B": 80, "C": 70, "D": 60, "F": 0}
-
-
 def _thresholds(value):
-    from src.calculator import classify
     if not isinstance(value, dict) or not 1 <= len(value) <= 20:
         raise ValueError("Supply between 1 and 20 grading thresholds.")
     if any(not isinstance(k, str) or not k.strip() or len(k) > 100 for k in value):
@@ -40,44 +49,90 @@ def _thresholds(value):
     return dict(value)
 
 
-def validate_workspace(payload):
-    """Atomically normalize a saved workspace; migrate original version 1 files.
+def _planning(value, courses):
+    if not isinstance(value, dict) or set(value) != {"credits", "gpa_scale", "gpa_history"}:
+        raise ValueError("Planning data needs course credits, a GPA scale and semester GPA history.")
+    credits = value["credits"]
+    if not isinstance(credits, dict) or set(credits) != set(courses):
+        raise ValueError("Enter credit hours for every course.")
+    scale = validate_scale(value["gpa_scale"])
+    history = value["gpa_history"]
+    if not isinstance(history, list) or len(history) > 100:
+        raise ValueError("Keep at most 100 semesters in GPA history.")
+    semesters = []
+    names = set()
+    for entry in history:
+        if not isinstance(entry, dict) or set(entry) != {"name", "credits", "gpa"}:
+            raise ValueError("Each prior semester needs a name, credits and GPA.")
+        name = entry["name"]
+        if not isinstance(name, str) or not name.strip() or len(name) > 100 or name in names:
+            raise ValueError("Each prior semester needs a unique name of 1–100 characters.")
+        names.add(name)
+        semesters.append({
+            "name": name,
+            "credits": positive_credits(entry["credits"]),
+            "gpa": validate_number(entry["gpa"], "GPA", high=scale["maximum"]),
+        })
+    return {
+        "credits": {name: positive_credits(credits[name]) for name in courses},
+        "gpa_scale": scale,
+        "gpa_history": semesters,
+    }
 
-    Version 2 persists targets and grading boundaries as well as assessments.
-    This module never writes a user's educational records to server disk.
-    """
+
+def validate_workspace(payload):
+    """Read older exports and validate all version 3 planning fields."""
     if not isinstance(payload, dict) or type(payload.get("version")) is not int:
         raise ValueError("Expected a versioned course workspace.")
-    if payload["version"] == 1:
+    version = payload["version"]
+    if version == 1:
         courses = validate_courses(payload)
         return {"version": 2, "courses": courses,
                 "targets": {name: 70.0 for name in courses},
                 "thresholds": dict(DEFAULT_THRESHOLDS)}
-    if payload["version"] != 2 or set(payload) != {"version", "courses", "targets", "thresholds"}:
-        raise ValueError("Expected a version 2 workspace with courses, targets and thresholds.")
-    courses = validate_courses({"version": 1, "courses": payload["courses"]})
+    fields = {"version", "courses", "targets", "thresholds"}
+    if version == 3:
+        fields.add("planning")
+    if version not in (2, 3) or set(payload) != fields:
+        raise ValueError("Expected a version 2 or 3 workspace with courses, targets and thresholds.")
+    courses = _courses(payload["courses"], include_planning=version == 3)
     targets = payload["targets"]
     if not isinstance(targets, dict) or set(targets) != set(courses):
         raise ValueError("Every course must have exactly one target grade.")
     normalized_targets = {}
     for name, records in courses.items():
-        calculate(records, targets[name])  # Includes finite/type/range checks.
+        calculate(records, targets[name])
         normalized_targets[name] = float(targets[name])
-    return {"version": 2, "courses": courses, "targets": normalized_targets,
-            "thresholds": _thresholds(payload["thresholds"])}
+    clean = {"version": version, "courses": courses, "targets": normalized_targets,
+             "thresholds": _thresholds(payload["thresholds"])}
+    if version == 3:
+        clean["planning"] = _planning(payload["planning"], courses)
+    return clean
 
 
-def workspace_payload(courses, targets=None, thresholds=None):
-    """Build a validated portable save from session state, supplying defaults."""
+def workspace_payload(courses, targets=None, thresholds=None, planning=None):
+    """Build a validated save from session state."""
     if not isinstance(courses, dict):
         raise ValueError("Courses must be an object.")
     if targets is None:
         targets = {}
     if not isinstance(targets, dict):
         raise ValueError("Targets must be an object.")
-    return validate_workspace({"version": 2, "courses": courses,
+    payload = {
+        "version": 2,
+        "courses": courses,
         "targets": {name: targets.get(name, 70.0) for name in courses},
-        "thresholds": DEFAULT_THRESHOLDS if thresholds is None else thresholds})
+        "thresholds": DEFAULT_THRESHOLDS if thresholds is None else thresholds,
+    }
+    has_assessment_details = any(
+        isinstance(record, dict) and ("kind" in record or "due" in record)
+        for records in courses.values() if isinstance(records, list)
+        for record in records
+    )
+    if planning is not None or has_assessment_details:
+        payload["version"] = 3
+        payload["planning"] = default_planning(courses) if planning is None else planning
+    return validate_workspace(payload)
 
 
 MAX_WORKSPACE_BYTES = 1_000_000

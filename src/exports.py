@@ -15,9 +15,9 @@ def _spreadsheet_text(value):
     return value
 
 
-def course_summary_csv(courses, targets=None):
+def course_summary_csv(courses, targets=None, planning=None):
     from app.persistence import workspace_payload
-    workspace = workspace_payload(courses, targets)
+    workspace = workspace_payload(courses, targets, planning=planning)
     output = io.StringIO(newline="")
     fields = ["Course", "Target (%)", "Earned contribution (points / 100)",
               "Completed weight (%)", "Completed average (%)", "Remaining weight (%)",
