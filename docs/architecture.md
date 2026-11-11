@@ -1,22 +1,19 @@
-> **Historical Phase 1 design contract.** Preserved for development history. Current behavior and evaluation rules are documented in [the iteration 2 contract](iteration2-contract.md), [the README](../README.md), and [the current model card](../reports/methodology.md). In particular, iteration 2 uses stage-appropriate baselines, simplicity-aware selection, active-feature input screening, and a reused historical audit.
+# How the app fits together
 
-# Architecture and shared contract
+## Academic tools
 
-Use `src` as importable package; run commands from repository root. Python >=3.11.
-Dataset: UCI 320, Portuguese only (649 rows), G3 regression 0–20, CC BY 4.0. No pooled subjects. Seed 42. Same 60/20/20 train/calibration/test indices for both stages. Select among DummyRegressor, LinearRegression, RandomForestRegressor, GradientBoostingRegressor using 5-fold CV MAE on train only; fit selected pipeline on train only, calibrate 90% split conformal residual interval on calibration, evaluate once on test. CV comparisons for all models; test only selected and dummy baseline. Preprocessing inside pipeline. Clip reported point/interval to 0–20 consistently. Global permutation importance on training CV or calibration, never individual causal explanation.
+`app/Home.py` starts Streamlit and owns navigation and session state. `app/dashboard.py` reads the current workspace and shows deadlines, course progress, and GPA. `app/academic_ui.py` handles planner, GPA, and individual grade scenario controls.
 
-Early inputs (strict schema): age 15..22, Medu 0..4, Fedu 0..4, traveltime 1..4, studytime 1..4, failures 0..4, internet yes/no, higher yes/no. Updated adds G1 and G2 0..20. All numeric inputs integers. Missing values allowed by API as None and imputed; UI requires values. Exclude absences and other ambiguously timed survey variables; early timing remains retrospective proxy, explicitly caveat. No demographics beyond age/parent education. No G3 input.
+A workspace stores courses, their assessments, grading thresholds, and planning settings. The dashboard, planner, and grade calculator all read the same records. Each assessment has a name, weight, and optional mark, type, and due date. The GPA page also uses credit hours, grade points, and prior semesters. See the [grade and GPA formulas](academic-planning.md).
 
-## ML API (owned by ML agent)
-`src/schema.py`: FEATURES dict mapping early/updated to ordered lists; SPECS mapping field name to dict with label, min/max/default (numeric) or options/default (categorical). `validate_inputs(values: dict, stage: str) -> pandas.DataFrame` rejects missing keys, extra keys, invalid ranges/categories/nonfinite; accepts None for imputation.
-`src/predict.py`: `load_bundle(stage: str, model_dir=Path('models')) -> dict`; bundle keys pipeline, stage, features, model_name, interval_radius, schema_version. `predict(values: dict, stage: str, model_dir=Path('models')) -> dict` returns prediction, lower, upper, model_name, stage. `compare_scenario(original: dict, adjusted: dict, stage: str, model_dir=Path('models')) -> dict` returns original (prediction dict), adjusted (prediction dict), delta, changes (dict field -> [old,new]).
-`python -m src.train` downloads data if absent, trains, saves models/{stage}.joblib, reports/metrics.json, reports/predictions.csv (stage,actual,predicted,residual), reports/importance.csv (stage,feature,importance), reports/data_summary.json. metrics JSON: stage keys early/updated each contains selected_model, cv_results list of {model,mae,rmse,r2}, test {mae,rmse,r2,coverage,mean_interval_width}, baseline_test {mae,rmse,r2}, split_sizes dict. data_summary: rows, columns, missing dict. data/student-por.csv cached. `src/data.py` load_data(download=True) -> DataFrame. Save provenance and hash; version-check trusted joblib bundles.
+`src/calculator.py`, `src/gpa.py`, and `src/planner.py` handle the arithmetic and summaries without Streamlit. `app/persistence.py` validates version 1, 2, and 3 JSON. `src/academic_io.py` parses CSV and validates the proposed workspace before the app applies it. `src/exports.py` creates reports in memory. See the [workspace file guide](workspace-files.md).
 
-## Calculator API (owned by lead)
-`src/calculator.py`: `calculate(assessments: list[dict], target: float=70) -> dict`. Each record name(str), weight(float 0..100), mark(float 0..100 or None). total weights <=100, reject nonfinite/bools. returns contribution, completed_weight, remaining_weight (100-completed), unallocated_weight (100-total), completed_average (None if zero), required_average (None if none remaining), target_possible bool, maximum_final, target_reached bool. Remaining calculation assumes weighted average over ALL unfinished plus unallocated weight. `classify(grade, thresholds: dict[str,float]) -> str` configurable descending boundaries.
+## Prediction demo
 
-## Application (owned by app agent)
-app/Home.py single entry with sidebar navigation to five sections; may use app/components.py. Imports root via sys.path. Calculator must work without model/data. Course records in session state plus explicit JSON download/upload for local persistence (no automatic personal records in repo). No writing personal data to server. Catch artifact unavailable and explain train command. Charts Plotly. Read reports only if present; no fabricated metrics. .streamlit/config.toml app agent owned.
+`src/schema.py` defines the inputs. `src/provisioning.py` verifies the bundled data and approved model recipes, then prepares them in memory. `src/predict.py` validates submitted inputs and returns a point estimate, an interval, and any input warnings. `src/reliability.py` calculates those warnings and describes interval coverage.
 
-## QA/docs agent
-Own tests/, README.md, .github/, requirements.txt, pyproject.toml, .gitignore, LICENSE, docs/ except architecture.md. No screenshots invented: lead will supply actual screenshot paths later. Tests can be authored against this contract, then reconcile to implementation. Include AppTest navigation smoke tests if supported. Use dependency bounds in pyproject.toml as sole dependency source; requirements.txt contains `-e .[dev]`. CI ubuntu/windows, Python3.11/3.13, training and test end to end.
+The original `src/train.py` experiment and its historical audit are separate from model initialization. `src/development_evaluation.py` runs the version 3 development comparison and leaves the release snapshots alone. See [deployment](deployment.md) and [model evaluation](../reports/development-evaluation-v3.md).
+
+## Tests
+
+Run `python -m pytest`. Calculation tests use small examples, workspace tests exercise both valid and malformed files, and Streamlit AppTest covers navigation and several user flows. Model tests verify input validation, split separation, and parity with the approved historical predictions.

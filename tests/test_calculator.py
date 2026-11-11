@@ -72,3 +72,15 @@ def test_configurable_thresholds():
     assert classify(85, thresholds) == "Distinction"
     assert classify(84.9, thresholds) == "Pass"
     assert classify(30, thresholds) == "Below pass"
+
+
+
+def test_weighted_grades_at_a_boundary_allow_for_float_roundoff():
+    thresholds = {"A": 90, "B": 80}
+    final = calculate([assessment(9.9, 90), assessment(90.1, 90)])["contribution"]
+    assert classify(final, thresholds) == "A"
+    assert classify(89.999, thresholds) == "B"
+
+    perfect = calculate([assessment(100, 100), assessment(0.0000000001, 100)])
+    assert perfect["contribution"] == 100
+    assert perfect["completed_average"] <= 100

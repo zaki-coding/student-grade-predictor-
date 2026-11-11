@@ -1,0 +1,29 @@
+{
+  "version": 3,
+  "courses": {
+    "Statistics": [
+      {"name": "Problem set", "weight": 20, "mark": 85, "kind": "Assignment"},
+      {"name": "Midterm", "weight": 30, "mark": 72, "kind": "Exam"},
+      {"name": "Final exam", "weight": 50, "mark": null, "kind": "Exam", "due": "2026-11-15"}
+    ],
+    "Programming": [
+      {"name": "Code quiz", "weight": 20, "mark": 50, "kind": "Quiz"},
+      {"name": "Lab submission", "weight": 30, "mark": null, "kind": "Assignment", "due": "2026-11-07"},
+      {"name": "Final project", "weight": 50, "mark": null, "kind": "Project", "due": "2026-11-12"}
+    ],
+    "Data visualization": [
+      {"name": "Chart critique", "weight": 30, "mark": 82, "kind": "Assignment"},
+      {"name": "Portfolio", "weight": 70, "mark": 88, "kind": "Project"}
+    ]
+  },
+  "targets": {"Statistics": 80, "Programming": 95, "Data visualization": 85},
+  "thresholds": {"A": 90, "B": 80, "C": 70, "D": 60, "F": 0},
+  "planning": {
+    "credits": {"Statistics": 3, "Programming": 4, "Data visualization": 2},
+    "gpa_scale": {"maximum": 4, "points": {"A": 4, "B": 3, "C": 2, "D": 1, "F": 0}},
+    "gpa_history": [
+      {"name": "Fall 2025", "credits": 15, "gpa": 3.12},
+      {"name": "Spring 2026", "credits": 14, "gpa": 3.42}
+    ]
+  }
+}

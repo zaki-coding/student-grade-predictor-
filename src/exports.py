@@ -5,6 +5,8 @@ import math
 from numbers import Real
 
 from src.calculator import calculate
+from src.gpa import gpa_summary
+from src.planner import semester_summary
 
 
 def _spreadsheet_text(value):
@@ -15,9 +17,9 @@ def _spreadsheet_text(value):
     return value
 
 
-def course_summary_csv(courses, targets=None):
+def course_summary_csv(courses, targets=None, planning=None):
     from app.persistence import workspace_payload
-    workspace = workspace_payload(courses, targets)
+    workspace = workspace_payload(courses, targets, planning=planning)
     output = io.StringIO(newline="")
     fields = ["Course", "Target (%)", "Earned contribution (points / 100)",
               "Completed weight (%)", "Completed average (%)", "Remaining weight (%)",
@@ -36,6 +38,69 @@ def course_summary_csv(courses, targets=None):
             number(result["maximum_final"]), result["target_possible"],
             number(result["unallocated_weight"]),
             "Exact arithmetic; remaining average includes unfinished and unallocated weight; no ML prediction"])
+    return output.getvalue()
+
+
+
+def semester_summary_csv(courses, targets, credits, today):
+    """Export course progress with deadlines as of the selected date."""
+    summary = semester_summary(courses, targets, today)
+    next_due = {}
+    for item in summary["upcoming"]:
+        next_due.setdefault(item["course"], item["due"])
+    overdue = {}
+    for item in summary["overdue"]:
+        course = item["course"]
+        overdue[course] = overdue.get(course, 0) + 1
+
+    output = io.StringIO(newline="")
+    writer = csv.writer(output, lineterminator="\n")
+    writer.writerow(["As of", "Course", "Credit hours", "Assessments", "Completed assessments",
+                     "Completed weight (%)", "Earned course points", "Target (%)", "Next due",
+                     "Overdue assessments"])
+    for course, row in summary["courses"].items():
+        writer.writerow([today.isoformat(), _spreadsheet_text(course), credits[course],
+                         row["assessment_count"], row["completed_count"], round(row["completed_weight"], 6),
+                         round(row["contribution"], 6), targets[course], next_due.get(course, ""),
+                         overdue.get(course, 0)])
+    return output.getvalue()
+
+
+def gpa_report_csv(course_rows, history, maximum, hypothetical_rows=()):
+    """Export recorded and hypothetical GPA results with their credit basis."""
+    output = io.StringIO(newline="")
+    writer = csv.writer(output, lineterminator="\n")
+    writer.writerow(["Scope", "Name", "Credit hours", "GPA", "Scale maximum",
+                     "Final mark (%)", "Grade label", "Basis"])
+    actual = [row for row in course_rows if row["gpa"] is not None]
+    for row in course_rows:
+        if row["grade"] is None:
+            basis = "In progress"
+        elif row["gpa"] is None:
+            basis = "Grade label missing from GPA scale"
+        else:
+            basis = "Recorded final grade"
+        writer.writerow(["Course", _spreadsheet_text(row["course"]), row["credits"], row["gpa"], maximum,
+                         row["grade"], _spreadsheet_text(row["label"] or ""), basis])
+    for row in history:
+        writer.writerow(["Prior semester", _spreadsheet_text(row["name"]), row["credits"], row["gpa"],
+                         maximum, "", "", "Entered semester GPA"])
+
+    summaries = [("Current semester", actual, "Mapped final grades"),
+                 ("Cumulative", history + actual, "Prior semesters and mapped final grades")]
+    if hypothetical_rows:
+        for row in hypothetical_rows:
+            writer.writerow(["Hypothetical course", _spreadsheet_text(row["course"]), row["credits"],
+                             row["gpa"], maximum, row["grade"], _spreadsheet_text(row["label"]), "Hypothetical grade"])
+        summaries += [
+            ("Hypothetical semester", actual + list(hypothetical_rows), "Recorded and hypothetical grades"),
+            ("Hypothetical cumulative", history + actual + list(hypothetical_rows),
+             "Prior semesters, recorded and hypothetical grades"),
+        ]
+    for name, entries, basis in summaries:
+        result = gpa_summary(entries, maximum)
+        gpa = round(result["gpa"], 6) if result["gpa"] is not None else None
+        writer.writerow(["Summary", name, result["credits"], gpa, maximum, "", "", basis])
     return output.getvalue()
 
 

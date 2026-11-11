@@ -1,18 +1,16 @@
-# Dataset card
+# Prediction dataset
 
-Source: [UCI Student Performance](https://archive.ics.uci.edu/dataset/320/student+performance).
-Citation: Cortez, P. (2008). *Student Performance* [Dataset]. UCI Machine Learning Repository. https://doi.org/10.24432/C5TG7T.
-License: [Creative Commons Attribution 4.0 International](https://creativecommons.org/licenses/by/4.0/). Attribution must remain with redistributed data and derived reports. Downloaded data retains its original license; the project code uses MIT.
+The app uses the Portuguese-language file from UCI Student Performance. It contains 649 records from two Portuguese secondary schools. The target, G3, is the final grade on a 0–20 scale. We use one subject because the mathematics and Portuguese files can include the same students. See [Cortez (2008), Student Performance](https://doi.org/10.24432/C5TG7T) and the [CC BY 4.0 license](https://creativecommons.org/licenses/by/4.0/).
 
-The application uses only `student-por.csv`: 649 Portuguese-language course records from two Portuguese secondary schools. The mathematics file is not pooled with it because students can occur in both subjects. Target `G3` is final-period academic performance on the original 0–20 scale. This is regression, not a university GPA or percentage predictor. The source reports no missing values; the generated `reports/data_summary.json` records the actual inspection. Pipeline imputers support explicitly missing inference values, which is a robustness feature rather than evidence of accuracy under missingness.
-
-| Stage | Candidate schema / active predictors | Intended timing |
+| Stage | Inputs in the current method | Intended prediction time |
 | --- | --- | --- |
-| Early | age, mother's and father's education (`Medu`, `Fedu`), travel time, weekly study-time category, past failures, home internet access, higher-education aspiration | Before G1/G2 assessment results; retrospective proxy only |
-| Updated | Candidate schema accepts early inputs plus G1/G2; the selected G2Persistence baseline actively uses only G2 | After the second assessment period |
+| Early linear regression | Age, parent education, travel time, study time, past failures, internet access, and intention to pursue higher education | Before G1 and G2 are available |
+| Updated G2 persistence | Second-period grade (G2) | After the second period |
 
-The full source contains additional demographic, family, social, support, health, attendance and assessment variables. This application deliberately uses a small documented subset. G3 never enters predictors. Whole-year absences and ambiguously timed variables are excluded to reduce temporal leakage. The underlying questionnaires do not establish prospective availability of every selected early input; early results are a retrospective benchmark and need prospective validation.
+G3 and full-year absences are excluded from model inputs. Full-year absences may include days after the prediction cutoff. The early questionnaire fields are retrospective. The dataset does not establish that all answers were available before the first grades. Updated research candidates may also use G1. The app's updated estimate equals G2.
 
-Numeric codes retain UCI meanings: study time 1=<2 hours/week, 2=2–5, 3=5–10, 4=>10; travel time 1=<15 minutes, 2=15–30, 3=30–60, 4=>60. Parental education is 0=none, 1=primary, 2=5th–9th grade, 3=secondary, 4=higher. Past failures retain the supplied coded count (0–4). Values outside the validated schema are rejected instead of extrapolated silently. Valid but rare or unusual active-input profiles can still receive heuristic training-support warnings; those warnings do not establish out-of-distribution accuracy or calibrated coverage. Inactive compatibility fields do not affect the selected updated estimate.
+Travel time and study time are category codes. The app shows their ranges with each input. Parental education ranges from 0 (none) to 4 (higher education). Past failures use the dataset's coded count. The input schema rejects out-of-range values. Missing values supplied to the prediction API are filled using training data. Accuracy and interval coverage with missing inputs have not been measured. The [data inspection](../reports/data_summary.json) records observed missingness in the source.
 
-The small, historical, observational sample cannot establish causal effects or reliable accuracy for a different country, institution, subject, or current student population. Random row splits estimate performance on similar records, not generalization to unseen schools or future cohorts. Potential household relationships cannot be audited because stable student/household identifiers are unavailable in this file. Age and parental education can encode disadvantage; excluding other sensitive fields does not establish fairness. This application is for learning and reflection, not admissions, grading, discipline, eligibility or high-stakes decisions.
+This is a small, historical, observational dataset. Random row splits cannot establish accuracy in future cohorts or universities. The file lacks stable student or household identifiers, and fields such as age and parent education can reflect disadvantage. The models have not been assessed for fairness or for decisions about admissions, grading, discipline, or eligibility.
+
+See the [historical audit](../reports/ml_audit.md) and [version 3 development evaluation](../reports/development-evaluation-v3.md) for results, interval limitations, and the requirements for testing on university data. Attribution for the bundled data and reports is in [third-party notices](third-party-notices.md).
