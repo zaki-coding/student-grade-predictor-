@@ -1,6 +1,6 @@
 """Streamlit views for course scenarios, deadlines, and GPA."""
 
-from datetime import date
+from datetime import date, timedelta
 import math
 
 import pandas as pd
@@ -85,7 +85,7 @@ def deadline_table(records, key=None):
         ]), hide_index=True, width="stretch", key=key)
 
 
-def planner_page(course_editor, open_calculator):
+def planner_page(course_editor, open_course):
     st.title("Semester planner")
     st.caption("Manage courses, weights, due dates and marks. The grade calculator uses these same assessments.")
     courses, targets = st.session_state["courses"], st.session_state["targets"]
@@ -102,10 +102,22 @@ def planner_page(course_editor, open_calculator):
     if summary["overdue"]:
         st.warning("Overdue and unfinished")
         deadline_table(summary["overdue"], "planner_overdue")
-    if summary["upcoming"]:
-        deadline_table(summary["upcoming"], "planner_upcoming")
+    end = today + timedelta(days=6)
+    week = [item for item in summary["upcoming"] if item["due"] <= end.isoformat()]
+    later = summary["upcoming"][len(week):]
+    st.markdown("**Next seven days**")
+    st.caption(f"{today:%d %b} – {end:%d %b %Y}")
+    if week:
+        deadline_table(week, "planner_week")
     else:
-        st.info("No upcoming deadlines. Add a due date to an unfinished assessment below.")
+        st.info("No unfinished assessments are due in this window.")
+    for label, items, key in [
+        ("Later deadlines", later, "planner_later"),
+        ("Missing a due date", summary["undated"], "planner_undated"),
+    ]:
+        if items:
+            with st.expander(f"{label} ({len(items)})"):
+                deadline_table(items, key)
     st.subheader("Course progress")
     st.dataframe(pd.DataFrame([
         {"Course": name, "Credits": credits[name],
@@ -116,7 +128,7 @@ def planner_page(course_editor, open_calculator):
     ]), hide_index=True, width="stretch")
     st.subheader("Edit courses and assessments")
     course = course_editor()
-    st.button("Open this course in the grade calculator", on_click=open_calculator, args=(course,))
+    st.button("Open this course in the grade calculator", on_click=open_course, args=(course, "Grade Calculator"))
     st.download_button("Download semester summary (CSV)", semester_summary_csv(courses, targets, credits, today),
                        file_name="student-success-semester-summary.csv", mime="text/csv")
 
@@ -227,6 +239,8 @@ def gpa_page():
         _gpa_metric("Semester GPA", semester, maximum)
     with b:
         _gpa_metric("Cumulative GPA", cumulative, maximum)
+    if not actual:
+        st.info("Semester GPA appears once a course has marks covering its full weight and a matching grade on your GPA scale.")
     if len(actual) != len(rows):
         st.caption(f"Recorded semester GPA includes {len(actual)} of {len(rows)} courses with final grades mapped to the GPA scale.")
     if hypothetical:

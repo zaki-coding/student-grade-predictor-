@@ -18,6 +18,8 @@ def test_dashboard_empty_state_and_saved_course_summary():
     assert not app.exception
     assert any(item.label == "Courses with recorded marks" and item.value == "1" for item in app.metric)
     frame = next(item.value for item in app.dataframe if "Course" in item.value.columns)
+    assert frame.loc[0, "Highest possible (%)"] == 90
+    assert frame.loc[0, "Target status"] == "Within reach"
     assert frame.loc[0, "Earned contribution"] == 40
     assert frame.loc[0, "Required remaining average (%)"] == 70
     assert frame.loc[0, "Target (%)"] == 75
@@ -52,3 +54,18 @@ def test_prediction_result_discloses_stage_scale_and_model_bound_metrics():
     assert any("observed interval coverage" in item.value.lower() for item in app.caption)
     assert any("0–20" in item.value for item in app.caption)
     assert any(item.label == "Download prediction report (Markdown)" for item in app.get("download_button"))
+
+
+def test_undated_assessment_opens_its_course_in_planner():
+    visitor = AppTest.from_file(str(ROOT / "app" / "Home.py"), default_timeout=30).run()
+    visitor.session_state["courses"] = {
+        "Studio": [{"name": "Project draft", "weight": 40, "mark": None}]
+    }
+    visitor.session_state["targets"] = {"Studio": 80}
+    visitor.run()
+    assert not visitor.exception
+    assert any("unfinished assessment still needs a date" in item.value for item in visitor.caption)
+    next(button for button in visitor.button if button.label == "Open Studio in the planner").click().run()
+    assert not visitor.exception
+    assert visitor.radio(key="page").value == "Semester Planner"
+    assert visitor.selectbox(key="course_select").value == "Studio"

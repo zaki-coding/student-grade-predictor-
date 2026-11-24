@@ -64,3 +64,32 @@ def test_demo_dashboard_shows_deadlines_and_course_priorities():
     assert any(widget.label == "Cumulative GPA" and widget.value == "3.25 / 4" for widget in visitor.metric)
     downloads = [widget.label for widget in visitor.get("download_button")]
     assert "Download semester summary (CSV)" in downloads
+
+
+def test_planner_groups_unfinished_work_by_week():
+    from datetime import date, timedelta
+
+    visitor = app()
+    today = date.today()
+    records = [
+        {"name": str(days), "weight": 10, "mark": None, "due": (today + timedelta(days=days)).isoformat()}
+        for days in (-1, 0, 6, 7)
+    ]
+    records.extend([
+        {"name": "Undated project", "weight": 10, "mark": None},
+        {"name": "Returned quiz", "weight": 10, "mark": 0},
+    ])
+    visitor.session_state["courses"] = {"Studio": records}
+    visitor.radio(key="page").set_value("Semester Planner").run()
+    assert not visitor.exception
+    windows = [frame.value["Assessment"].tolist() for frame in visitor.dataframe if "Due" in frame.value]
+    assert windows == [["-1"], ["0", "6"], ["7"], ["Undated project"]]
+
+
+def test_overdue_course_opens_in_planner():
+    visitor = app()
+    visitor.button(key="load_demo").click().run()
+    next(button for button in visitor.button if button.label == "Open Programming in the planner").click().run()
+    assert not visitor.exception
+    assert visitor.radio(key="page").value == "Semester Planner"
+    assert visitor.selectbox(key="course_select").value == "Programming"

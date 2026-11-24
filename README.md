@@ -6,7 +6,7 @@ The [live demo](https://student-success-ai-zaki.streamlit.app/) runs from the ma
 
 ## Features
 
-- **Dashboard and semester planner** show course progress, deadlines, and targets using the same assessments as the grade calculator.
+- **Dashboard and semester planner** share assessments with the grade calculator. The dashboard shows banked points, the highest possible final grade and target status. The planner groups overdue work, the next seven days, later deadlines and unfinished work missing a date.
 - **Grade calculator** calculates weighted grades, compares hypothetical marks, and shows the score you need on an unfinished exam or across remaining work.
 - **GPA calculator** uses credit hours and your grading scale to calculate semester, cumulative, and hypothetical GPA.
 - **Workspace files** let you restore older JSON workspaces, import courses and assessments from CSV, and download semester, grade, and GPA reports.
@@ -47,7 +47,7 @@ The target is a Portuguese secondary-school course grade on a 0–20 scale. The 
 
 These measurements come from the existing historical audit, which was inspected before version 3. Early intervals were about 9 points wide on average. Coverage for individual students, universities, and missing inputs has not been established. Input warnings flag profiles that differ from the training records.
 
-The [version 3 development experiment](reports/development-evaluation-v3.md) used only the original training rows. Huber regression reduced early out-of-fold MAE from 2.084 to 2.057. Median regression on G1 and G2 tied G2 persistence at 0.797. Both are internal comparisons, so the app continues to use the approved methods. See the [model methodology](reports/methodology.md) and [historical audit](reports/ml_audit.md) for the split, baselines, and limitations.
+The [version 3 development experiment](reports/development-evaluation-v3.md) used only the original training rows. A shorter early model using study time and past failures had higher MAE (2.160 versus 2.084), so it was not adopted. Huber regression reduced early out-of-fold MAE from 2.084 to 2.057. Median regression on G1 and G2 tied G2 persistence at 0.797. These are internal comparisons, so the app continues to use the approved methods. See the [model methodology](reports/methodology.md) and [historical audit](reports/ml_audit.md) for the split, baselines, and limitations.
 
 ## Project files
 

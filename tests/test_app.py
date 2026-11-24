@@ -89,3 +89,6 @@ def test_prediction_submit_and_scenario_match_saved_inputs():
     app.number_input(key="adjusted_updated_G2").set_value(18).run()
     assert not app.exception
     assert app.dataframe
+    next(widget for widget in app.button if widget.label == "Copy original values").click().run()
+    assert not app.exception
+    assert app.number_input(key="adjusted_updated_G2").value == 16
