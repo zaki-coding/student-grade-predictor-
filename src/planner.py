@@ -33,6 +33,7 @@ def semester_summary(courses: dict, targets: dict, today: date) -> dict:
     summaries = {}
     upcoming = []
     overdue = []
+    undated = []
     completed_count = assessment_count = 0
     for course, records in courses.items():
         grade = calculate(records, targets[course])
@@ -42,12 +43,17 @@ def semester_summary(courses: dict, targets: dict, today: date) -> dict:
         assessment_count += len(records)
         for index, record in enumerate(records):
             due = assessment_date(record.get("due"))
-            if due is None or record.get("mark") is not None:
+            if record.get("mark") is not None:
                 continue
-            deadlines = overdue if due < today else upcoming
+            if due is None:
+                deadlines = undated
+            elif due < today:
+                deadlines = overdue
+            else:
+                deadlines = upcoming
             deadlines.append({
                 "course": course, "index": index, "name": record["name"],
-                "weight": record["weight"], "due": due.isoformat(), "kind": record.get("kind", "Other"),
+                "weight": record["weight"], "due": due.isoformat() if due else None, "kind": record.get("kind", "Other"),
             })
     for deadlines in (upcoming, overdue):
         deadlines.sort(key=lambda item: (item["due"], item["course"].casefold(), item["index"]))
@@ -56,6 +62,7 @@ def semester_summary(courses: dict, targets: dict, today: date) -> dict:
         "completed_count": completed_count,
         "assessment_count": assessment_count,
         "progress": 100 * completed_count / assessment_count if assessment_count else None,
+        "undated": undated,
         "upcoming": upcoming,
         "overdue": overdue,
     }

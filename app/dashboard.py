@@ -3,7 +3,6 @@
 from datetime import date, timedelta
 
 import pandas as pd
-import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
@@ -25,33 +24,37 @@ def _course_progress(summary, targets, credits):
     for name, row in courses.items():
         status = "Met" if row["target_reached"] else "Within reach" if row["target_possible"] else "Out of reach"
         rows.append({
-            "Course": name, "Credits": credits[name], "Current average (%)": _percent(row["completed_average"]),
+            "Course": name, "Current average (%)": _percent(row["completed_average"]),
+            "Target status": status,
             "Target (%)": targets[name], "Earned contribution": _percent(row["contribution"]),
             "Completed weight (%)": _percent(row["completed_weight"]),
-            "Required remaining average (%)": _percent(row["required_average"]), "Target status": status,
+            "Required remaining average (%)": _percent(row["required_average"]),
+            "Highest possible (%)": _percent(row["maximum_final"]),
+            "Credits": credits[name],
         })
-    st.dataframe(pd.DataFrame(rows), hide_index=True, width="stretch")
-    st.caption("The current average uses completed work. Earned contribution is the number of points banked toward the full course.")
+    st.dataframe(pd.DataFrame(rows), hide_index=True, width="stretch", column_config={
+        "Completed weight (%)": st.column_config.ProgressColumn(
+            "Graded weight", min_value=0, max_value=100, format="%.1f%%"),
+    })
+    st.caption("The current average uses completed work. Earned points are already banked. "
+               "The highest possible grade assumes full marks on all remaining weight, including unallocated weight.")
     if not any(row["completed_weight"] > 0 for row in courses.values()):
         st.info("Record an assessment mark in the planner to see your current grade.")
     else:
         fig = go.Figure()
-        fig.add_trace(go.Bar(y=list(courses), x=[row["completed_average"] for row in courses.values()],
-                             orientation="h", name="Current average", marker_color=PALETTE[0]))
-        fig.add_trace(go.Scatter(y=list(courses), x=[targets[name] for name in courses], mode="markers",
-                                 name="Target", marker=dict(symbol="diamond", size=11, color=PALETTE[3])))
-        fig.update_layout(title="Current averages and targets", xaxis=dict(title="Grade (%)", range=[0, 100]),
-                          height=min(700, max(280, 50 * len(courses))))
+        for label, field, color in [
+            ("Earned", "contribution", PALETTE[0]),
+            ("Still available", "remaining_weight", "#475569"),
+        ]:
+            fig.add_bar(y=list(courses), x=[row[field] for row in courses.values()],
+                        orientation="h", name=label, marker_color=color,
+                        hovertemplate="%{y}<br>%{x:.2f} course points<extra>%{fullData.name}</extra>")
+        fig.add_scatter(y=list(courses), x=[targets[name] for name in courses], mode="markers",
+                        name="Target", marker=dict(symbol="diamond", size=10, color=PALETTE[3]))
+        fig.update_layout(title="Reachable final grades", barmode="stack",
+                          xaxis=dict(title="Course points out of 100", range=[-1, 101]),
+                          height=min(850, max(310, 46 * len(courses))))
         chart(fig)
-    if summary["completed_count"] and summary["completed_count"] < summary["assessment_count"]:
-        counts = pd.DataFrame([
-            {"Course": name, "Completed": row["completed_count"],
-             "Remaining": row["assessment_count"] - row["completed_count"]}
-            for name, row in courses.items()
-        ])
-        chart(px.bar(counts, y="Course", x=["Completed", "Remaining"], orientation="h",
-                     labels={"value": "Assessments"}, title="Completed and remaining assessments",
-                     height=min(700, max(280, 45 * len(courses)))))
 
 
 def _priorities(summary, targets, today):
@@ -78,16 +81,17 @@ def _priorities(summary, targets, today):
         st.caption("Highest averages needed on remaining work")
         st.dataframe(pd.DataFrame([(name, round(value, 2)) for name, value in demands[:3]],
                                   columns=["Course", "Required average (%)"]), hide_index=True, width="stretch")
-    due_soon = [item for item in summary["upcoming"] if item["due"] <= (today + timedelta(days=7)).isoformat()]
+    week_end = (today + timedelta(days=6)).isoformat()
+    due_soon = [item for item in summary["upcoming"] if item["due"] <= week_end]
     if due_soon:
         highest_weight = max(due_soon, key=lambda item: item["weight"])
         st.caption("Highest-weight assessment due within seven days")
         deadline_table([highest_weight], "dashboard_heavy")
     if not (unreachable or demands or due_soon):
-        st.caption("Add marks or due dates to see course priorities.")
+        st.caption("No outstanding target or dated assessment needs attention here.")
 
 
-def _deadlines(summary):
+def _deadlines(summary, open_course):
     st.subheader("Assessment deadlines")
     overdue = len(summary["overdue"])
     if overdue:
@@ -95,9 +99,17 @@ def _deadlines(summary):
         st.warning(message)
         deadline_table(summary["overdue"], "dashboard_overdue")
     if summary["upcoming"]:
-        deadline_table(summary["upcoming"], "dashboard_upcoming")
+        next_due = summary["upcoming"][0]
+        st.caption(f"Next due · {next_due['due']}")
+        deadline_table(summary["upcoming"][:3], "dashboard_upcoming")
+        if len(summary["upcoming"]) > 3:
+            st.caption("The semester planner lists the rest of your dated assessments.")
     else:
         st.info("No upcoming assessments have a due date.")
+    queue = summary["overdue"] or summary["upcoming"]
+    if queue:
+        course = queue[0]["course"]
+        st.button(f"Open {course} in the planner", on_click=open_course, args=(course, "Semester Planner"))
     dated = len(summary["upcoming"]) + len(summary["overdue"])
     undated = summary["assessment_count"] - summary["completed_count"] - dated
     if undated == 1:
@@ -142,7 +154,7 @@ def _gpa_history(history, current, maximum):
     chart(fig)
 
 
-def dashboard(courses, targets, thresholds, planning):
+def dashboard(courses, targets, thresholds, planning, open_course):
     today = date.today()
     summary = semester_summary(courses, targets, today)
     credits = planning["credits"]
@@ -155,7 +167,7 @@ def dashboard(courses, targets, thresholds, planning):
         st.progress(summary["progress"] / 100,
                     text=f"{summary['completed_count']} of {summary['assessment_count']} assessments completed")
     current_gpa = _gpa_metrics(grade_rows, planning)
-    _deadlines(summary)
+    _deadlines(summary, open_course)
     _course_progress(summary, targets, credits)
     _priorities(summary, targets, today)
     _gpa_history(planning["gpa_history"], current_gpa, planning["gpa_scale"]["maximum"])

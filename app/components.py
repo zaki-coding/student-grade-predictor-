@@ -8,7 +8,7 @@ PALETTE = ["#2DD4BF", "#60A5FA", "#C4B5FD", "#FBBF24"]
 def apply_style():
     st.markdown("""
 <style>
-.block-container {max-width:1200px; padding-top:2.6rem; padding-bottom:3rem;}
+.block-container {max-width:1200px; padding-top:3.75rem; padding-bottom:3rem;}
 [data-testid="stSidebar"] {border-right:1px solid #334155;}
 h1,h2,h3 {letter-spacing:-.025em;}
 [data-testid="stMetric"] {
@@ -16,7 +16,8 @@ h1,h2,h3 {letter-spacing:-.025em;}
 }
 [data-testid="stMetricValue"] {overflow-wrap:anywhere;}
 @media (max-width:640px) {
-    .block-container {padding:2rem 1rem;}
+    .block-container {padding:3.25rem 1rem 2rem;}
+    [data-testid="stHorizontalBlock"] {row-gap:.45rem;}
     h1 {font-size:1.95rem !important;}
     [data-testid="stMetric"] {padding:.65rem .8rem;}
 }
@@ -53,6 +54,11 @@ def prediction_result(result):
     a.metric("Estimated final grade", f"{result['prediction']:.1f} / 20")
     b.metric(f"{nominal:.0%} prediction interval", f"{result['lower']:.1f}–{result['upper']:.1f}")
     st.write(f"**Prediction stage:** {stage} · **Selected model:** {result['model_name']}")
+    if result["stage"] == "updated":
+        st.write("The updated estimate carries your second-period grade (G2) forward. "
+                 "The range shows how much final grades could differ from that baseline.")
+    else:
+        st.write("The early regression combines questionnaire answers before any period grades are available.")
     if result.get("active_features"):
         st.caption("Inputs used by the selected model: " + ", ".join(result["active_features"]) + ". Other profile fields do not affect this model’s point estimate.")
     fig = go.Figure()
@@ -72,7 +78,7 @@ def prediction_result(result):
         b.metric("RMSE (grade points)",f"{test['rmse']:.2f}")
         c.metric("R²",f"{test['r2']:.3f}")
         st.caption(f"Observed interval coverage: {test.get('coverage',0):.1%}. "
-                   f"Nominal coverage: {nominal:.0%}. MAE is average absolute error; an individual error can be larger.")
+                   f"Nominal coverage: {nominal:.0%}. MAE is the average distance between the estimate and the recorded grade. RMSE gives larger misses more weight.")
         diagnostics = evaluation.get("interval_diagnostics", {})
         overall = diagnostics.get("overall", diagnostics)
         bounds = overall.get("coverage_95ci") or overall.get("wilson_interval") or overall.get("coverage_ci")

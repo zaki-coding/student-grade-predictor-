@@ -54,9 +54,9 @@ def navigate(page):
     st.session_state["page"] = page
 
 
-def open_calculator(course):
+def open_course(course, page):
     st.session_state["course_select"] = course
-    navigate("Grade Calculator")
+    navigate(page)
 
 
 def current_workspace(courses=None, thresholds=None, planning=None):
@@ -167,7 +167,7 @@ def overview():
     if st.session_state.get("workspace_notice"):
         st.info(st.session_state.pop("workspace_notice"))
     dashboard(st.session_state["courses"], st.session_state["targets"],
-              st.session_state["thresholds"], st.session_state["planning"])
+              st.session_state["thresholds"], st.session_state["planning"], open_course)
 
 
 def _workspace_files():
@@ -319,6 +319,10 @@ def calculator_page():
     except (ValueError, TypeError) as exc:
         st.error(f"Check your assessments: {exc}")
         return
+    average = result["completed_average"]
+    if average is not None:
+        st.subheader(f"Current average · {average:.1f}%")
+        st.caption("Based on the graded weight in this course.")
     a, b, c = st.columns(3)
     a.metric("Earned contribution", f"{result['contribution']:.1f} / 100")
     b.metric("Completed weight", f"{result['completed_weight']:.1f}%")
@@ -469,6 +473,11 @@ def prediction_page():
                "Do not use this estimate for admissions, grading, or high-stakes decisions.")
 
 
+def reset_scenario(stage, fields):
+    for field in fields:
+        st.session_state[f"adjusted_{stage}_{field}"] = st.session_state[f"original_{stage}_{field}"]
+
+
 def scenario_page():
     st.title("What-if lab")
     st.caption("Compare how two profiles change a model estimate.")
@@ -487,6 +496,8 @@ def scenario_page():
     active = current_bundle.get("active_features", features[stage])
     st.warning("Changing an input shows how the estimate responds. The comparison cannot tell you "
                "whether changing study habits or another input would improve your grade.")
+    st.caption("Change G2 in the adjusted profile to compare two second-period grades." if stage == "updated"
+               else "Start with one difference between the profiles to see its effect on the estimate.")
     left, right = st.columns(2, gap="large")
     last = st.session_state.get("last_prediction", {})
     defaults = last.get("values") if last.get("stage") == stage else None
@@ -495,6 +506,7 @@ def scenario_page():
         original = controls(features, specs, stage, "original", defaults, active)
     with right:
         st.subheader("Adjusted scenario")
+        st.button("Copy original values", on_click=reset_scenario, args=(stage, active))
         adjusted = controls(features, specs, stage, "adjusted", defaults, active)
     try:
         result = compare_scenario(original, adjusted, stage, ROOT / "models")
@@ -678,7 +690,7 @@ with st.sidebar:
 
 {
     "Overview": overview,
-    "Semester Planner": lambda: planner_page(course_editor, open_calculator),
+    "Semester Planner": lambda: planner_page(course_editor, open_course),
     "Grade Calculator": calculator_page,
     "GPA Calculator": gpa_page,
     "AI Predictor": prediction_page,

@@ -6,7 +6,7 @@ The [live demo](https://student-success-ai-zaki.streamlit.app/) runs from the ma
 
 ## Features
 
-- **Dashboard and semester planner** show course progress, deadlines, and targets using the same assessments as the grade calculator.
+- **Dashboard and semester planner** share assessments with the grade calculator. The dashboard shows banked points, the highest possible final grade and target status. The planner groups overdue work, the next seven days, later deadlines and unfinished work missing a date.
 - **Grade calculator** calculates weighted grades, compares hypothetical marks, and shows the score you need on an unfinished exam or across remaining work.
 - **GPA calculator** uses credit hours and your grading scale to calculate semester, cumulative, and hypothetical GPA.
 - **Workspace files** let you restore older JSON workspaces, import courses and assessments from CSV, and download semester, grade, and GPA reports.

@@ -18,6 +18,8 @@ def test_dashboard_empty_state_and_saved_course_summary():
     assert not app.exception
     assert any(item.label == "Courses with recorded marks" and item.value == "1" for item in app.metric)
     frame = next(item.value for item in app.dataframe if "Course" in item.value.columns)
+    assert frame.loc[0, "Highest possible (%)"] == 90
+    assert frame.loc[0, "Target status"] == "Within reach"
     assert frame.loc[0, "Earned contribution"] == 40
     assert frame.loc[0, "Required remaining average (%)"] == 70
     assert frame.loc[0, "Target (%)"] == 75
