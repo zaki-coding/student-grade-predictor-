@@ -88,7 +88,10 @@ def _priorities(summary, targets, today):
         st.caption("Highest-weight assessment due within seven days")
         deadline_table([highest_weight], "dashboard_heavy")
     if not (unreachable or demands or due_soon or summary["overdue"]):
-        st.caption("No outstanding target or dated assessment needs attention here.")
+        if summary["undated"]:
+            st.caption("Add due dates to unfinished work in the planner to see weekly priorities.")
+        else:
+            st.caption("No outstanding target or dated assessment needs attention here.")
 
 
 def _deadlines(summary, open_course):
@@ -106,12 +109,11 @@ def _deadlines(summary, open_course):
             st.caption("The semester planner lists the rest of your dated assessments.")
     else:
         st.info("No upcoming assessments have a due date.")
-    queue = summary["overdue"] or summary["upcoming"]
+    queue = summary["overdue"] or summary["upcoming"] or summary["undated"]
     if queue:
         course = queue[0]["course"]
         st.button(f"Open {course} in the planner", on_click=open_course, args=(course, "Semester Planner"))
-    dated = len(summary["upcoming"]) + len(summary["overdue"])
-    undated = summary["assessment_count"] - summary["completed_count"] - dated
+    undated = len(summary["undated"])
     if undated == 1:
         st.caption("One unfinished assessment still needs a date.")
     elif undated:
