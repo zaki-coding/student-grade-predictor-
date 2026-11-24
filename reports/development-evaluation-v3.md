@@ -1,6 +1,6 @@
 # Version 3 development evaluation
 
-The prediction demo still uses the approved early linear model and the updated G2 persistence baseline. This experiment compared two alternatives on the original 389 training rows from the UCI Portuguese course data. The 130 calibration rows and 130 historical audit rows were excluded from every fit and score.
+The prediction demo still uses the approved early linear model and the updated G2 persistence baseline. This experiment compared alternative models on the original 389 training rows from the UCI Portuguese course data. The 130 calibration rows and 130 historical audit rows were excluded from every fit and score.
 
 ## How the comparison worked
 
@@ -9,7 +9,7 @@ The prediction demo still uses the approved early linear model and the updated G
 - Each method uses the same five shuffled folds with seed 42. Imputation, encoding, and scaling are fitted inside each fold. Each row is scored using a model fitted on the other four folds. Predictions are clipped to 0–20 before scoring.
 - G3 is the target. G3, full-year absences, and school are excluded as predictors. The early questionnaire inputs still have uncertain collection timing, so this is a retrospective comparison.
 
-Run `python -m src.development_evaluation` from the repository root. It checks the bundled dataset's hash and prints the results without writing files. The run below used Python 3.13.3, scikit-learn 1.8.0, NumPy 2.5.4, and pandas 3.1.1.
+Run `python -m src.development_evaluation` from the repository root. It checks the bundled dataset's hash and prints the results without writing files. The run below used Python 3.13.3, scikit-learn 1.8.0, NumPy 2.5.5, and pandas 3.1.1.
 
 ## Results on development rows
 
@@ -17,11 +17,14 @@ Run `python -m src.development_evaluation` from the repository root. It checks t
 | --- | --- | ---: | ---: | ---: |
 | Early | Constant median | 2.491 | 3.371 | −0.007 |
 | Early | Linear regression (in app) | 2.084 | 2.934 | 0.237 |
+| Early | Linear regression on study time and past failures | 2.160 | 2.963 | 0.222 |
 | Early | Huber | 2.057 | 2.918 | 0.245 |
 | Updated | Constant median | 2.491 | 3.371 | −0.007 |
 | Updated | G2 persistence (in app) | 0.797 | 1.394 | 0.828 |
 | Updated | G1/G2 linear regression | 0.826 | 1.344 | 0.840 |
 | Updated | G1/G2 median regression | 0.797 | 1.394 | 0.828 |
+
+Using only weekly study time and past failures raised early MAE by 0.077 grade points compared with the full questionnaire. The shorter form could reduce data entry, but the comparison gives no accuracy advantage.
 
 Huber lowered pooled early MAE by 0.027 points. Updated median regression tied G2 persistence. The updated linear fit lowered RMSE but raised MAE, the comparison's primary metric. These are internal comparisons on development data used before. The small Huber difference needs confirmation in a separate cohort before a release change.
 
@@ -55,5 +58,7 @@ The version 3 comparison did not fit or recalibrate intervals, and it leaves the
 ## What a university dataset would need
 
 The two reviewed UCI higher-education datasets use different outcomes: [letter-grade categories](https://archive.ics.uci.edu/dataset/856/higher+education+students+performance+evaluation) and [dropout, enrolled, or graduate status](https://archive.ics.uci.edu/dataset/697/predict+students+dropout+and+academic+success). The [Open University dataset](https://pmc.ncbi.nlm.nih.gov/articles/PMC5704676/) includes assessment scores and dates, but its documentation says final exam scores are usually missing. It is a candidate for studying timed assessment data with a separately defined target. None of these sources was used to validate the current course-grade predictor.
+
+The letter-grade dataset has 145 records and a CC BY 4.0 license. It could support a small classification study. Before fitting a model, check when survey answers such as expected GPA were collected and whether students or course sections recur across folds. A held-out cohort would be needed to assess transfer.
 
 A future numeric course-grade study needs a licensed target with a clear grading scale, a prediction cutoff for every feature, and stable group or cohort identifiers to split by student, course, institution or term as appropriate. `compare_candidates` in `src/development_evaluation.py` already accepts a separate predictor table, a target, pipelines, a fold splitter, and grade bounds. Keep dataset parsing, feature availability, and any new calibration protocol outside the released UCI model recipes. Reserve a fresh cohort for evaluation before choosing models, then check error, interval coverage, and missingness on that cohort.

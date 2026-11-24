@@ -42,4 +42,6 @@ def test_experiment_excludes_calibration_and_audit_rows(monkeypatch):
     monkeypatch.setattr(evaluation, "compare_candidates", compare)
     report = evaluation.evaluate_development(frame)
     assert report["n"] == len(training_rows)
+    assert "StudyAndFailures" in report["stages"]["early"]["development_cv"]
+    assert "StudyAndFailures" not in report["stages"]["updated"]["development_cv"]
     assert stages_seen == [5, 2, 5, 2]

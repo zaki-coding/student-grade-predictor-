@@ -8,7 +8,7 @@ import platform
 import numpy as np
 import pandas as pd
 import sklearn
-from sklearn.linear_model import HuberRegressor, QuantileRegressor
+from sklearn.linear_model import HuberRegressor, LinearRegression, QuantileRegressor
 from sklearn.metrics import mean_absolute_error
 from sklearn.model_selection import KFold, LeaveOneGroupOut, cross_val_predict
 
@@ -67,6 +67,10 @@ def evaluate_development(frame: pd.DataFrame) -> dict:
             trial_name = "PriorGradesMedian"
         candidates = {name: original[name] for name in names}
         candidates[trial_name] = trial
+        if stage == "early":
+            candidates["StudyAndFailures"] = build_pipeline(
+                stage, LinearRegression(), ["studytime", "failures"]
+            )
         predictions = compare_candidates(predictors, target, candidates, folds, bounds)
         current_mae = mean_absolute_error(target, predictions[current])
         comparison = {}
