@@ -49,6 +49,8 @@ These measurements come from the existing historical audit, which was inspected 
 
 The [version 3 development experiment](reports/development-evaluation-v3.md) used only the original training rows. A shorter early model using study time and past failures had higher MAE (2.160 versus 2.084), so it was not adopted. Huber regression reduced early out-of-fold MAE from 2.084 to 2.057. Median regression on G1 and G2 tied G2 persistence at 0.797. These are internal comparisons, so the app continues to use the approved methods. See the [model methodology](reports/methodology.md) and [historical audit](reports/ml_audit.md) for the split, baselines, and limitations.
 
+The university research compares next-assignment scores at the Open University and second-semester averages at Portalegre. Both experiments run separately from the app. [Results, eligibility rules and reproduction steps](reports/university-grades.md)
+
 ## Project files
 
 | Path | Contents |

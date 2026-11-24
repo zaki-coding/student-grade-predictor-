@@ -1,0 +1,263 @@
+{
+  "splits": [
+    {
+      "rows": 2132,
+      "students": 2132,
+      "assessments": null
+    },
+    {
+      "rows": 711,
+      "students": 711,
+      "assessments": null
+    },
+    {
+      "rows": 711,
+      "students": 711,
+      "assessments": null
+    }
+  ],
+  "validation": {
+    "median": {
+      "mae": 1.1033,
+      "rmse": 1.3874
+    },
+    "first_term": {
+      "mae": 0.7855,
+      "rmse": 1.0807
+    },
+    "linear": {
+      "mae": 0.7571,
+      "rmse": 0.9954
+    },
+    "boosting": {
+      "mae": 0.7395,
+      "rmse": 0.9932
+    }
+  },
+  "selected": "boosting",
+  "baseline": "first_term",
+  "test": {
+    "median": {
+      "mae": 1.0924,
+      "rmse": 1.3618
+    },
+    "first_term": {
+      "mae": 0.7874,
+      "rmse": 1.0564
+    },
+    "linear": {
+      "mae": 0.7499,
+      "rmse": 0.969
+    },
+    "boosting": {
+      "mae": 0.7179,
+      "rmse": 0.9414
+    }
+  },
+  "paired_mae_difference_95": [
+    -0.1082,
+    -0.0295
+  ],
+  "by_course": {
+    "33": {
+      "rows": 1,
+      "baseline": {
+        "mae": 0.6667,
+        "rmse": 0.6667
+      },
+      "selected": {
+        "mae": 0.4907,
+        "rmse": 0.4907
+      }
+    },
+    "171": {
+      "rows": 4,
+      "baseline": {
+        "mae": 0.5153,
+        "rmse": 0.5698
+      },
+      "selected": {
+        "mae": 0.4532,
+        "rmse": 0.5117
+      }
+    },
+    "8014": {
+      "rows": 29,
+      "baseline": {
+        "mae": 0.764,
+        "rmse": 0.9494
+      },
+      "selected": {
+        "mae": 0.812,
+        "rmse": 1.0243
+      }
+    },
+    "9003": {
+      "rows": 33,
+      "baseline": {
+        "mae": 0.6948,
+        "rmse": 0.9753
+      },
+      "selected": {
+        "mae": 0.7205,
+        "rmse": 0.9211
+      }
+    },
+    "9070": {
+      "rows": 46,
+      "baseline": {
+        "mae": 0.7879,
+        "rmse": 0.9874
+      },
+      "selected": {
+        "mae": 0.7053,
+        "rmse": 0.9003
+      }
+    },
+    "9085": {
+      "rows": 45,
+      "baseline": {
+        "mae": 1.0412,
+        "rmse": 1.2956
+      },
+      "selected": {
+        "mae": 0.9091,
+        "rmse": 1.0888
+      }
+    },
+    "9119": {
+      "rows": 24,
+      "baseline": {
+        "mae": 0.9123,
+        "rmse": 1.3021
+      },
+      "selected": {
+        "mae": 1.0022,
+        "rmse": 1.2077
+      }
+    },
+    "9130": {
+      "rows": 26,
+      "baseline": {
+        "mae": 0.757,
+        "rmse": 0.9755
+      },
+      "selected": {
+        "mae": 0.8775,
+        "rmse": 1.0948
+      }
+    },
+    "9147": {
+      "rows": 77,
+      "baseline": {
+        "mae": 1.1209,
+        "rmse": 1.3785
+      },
+      "selected": {
+        "mae": 0.853,
+        "rmse": 1.1249
+      }
+    },
+    "9238": {
+      "rows": 71,
+      "baseline": {
+        "mae": 0.7297,
+        "rmse": 0.956
+      },
+      "selected": {
+        "mae": 0.7017,
+        "rmse": 0.8927
+      }
+    },
+    "9254": {
+      "rows": 30,
+      "baseline": {
+        "mae": 0.7202,
+        "rmse": 0.8349
+      },
+      "selected": {
+        "mae": 0.7162,
+        "rmse": 0.8694
+      }
+    },
+    "9500": {
+      "rows": 131,
+      "baseline": {
+        "mae": 0.4164,
+        "rmse": 0.7325
+      },
+      "selected": {
+        "mae": 0.4303,
+        "rmse": 0.6541
+      }
+    },
+    "9556": {
+      "rows": 17,
+      "baseline": {
+        "mae": 1.1055,
+        "rmse": 1.3093
+      },
+      "selected": {
+        "mae": 0.7052,
+        "rmse": 0.9092
+      }
+    },
+    "9670": {
+      "rows": 48,
+      "baseline": {
+        "mae": 0.8867,
+        "rmse": 1.1207
+      },
+      "selected": {
+        "mae": 0.9181,
+        "rmse": 1.1117
+      }
+    },
+    "9773": {
+      "rows": 52,
+      "baseline": {
+        "mae": 0.7408,
+        "rmse": 0.992
+      },
+      "selected": {
+        "mae": 0.6168,
+        "rmse": 0.8088
+      }
+    },
+    "9853": {
+      "rows": 33,
+      "baseline": {
+        "mae": 1.0118,
+        "rmse": 1.2066
+      },
+      "selected": {
+        "mae": 0.7383,
+        "rmse": 0.9215
+      }
+    },
+    "9991": {
+      "rows": 44,
+      "baseline": {
+        "mae": 0.9055,
+        "rmse": 1.1419
+      },
+      "selected": {
+        "mae": 0.7898,
+        "rmse": 1.0162
+      }
+    }
+  },
+  "test_without_prior": 8,
+  "target_coverage": {
+    "false": {
+      "Dropout": 727,
+      "Enrolled": 68,
+      "Graduate": 75
+    },
+    "true": {
+      "Dropout": 694,
+      "Enrolled": 726,
+      "Graduate": 2134
+    }
+  }
+}
