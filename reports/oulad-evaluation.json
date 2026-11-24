@@ -1,0 +1,229 @@
+{
+  "splits": [
+    {
+      "rows": 11990,
+      "students": 3564,
+      "assessments": 13
+    },
+    {
+      "rows": 24734,
+      "students": 6369,
+      "assessments": 29
+    },
+    {
+      "rows": 29362,
+      "students": 7884,
+      "assessments": 32
+    }
+  ],
+  "validation": {
+    "median": {
+      "mae": 12.864,
+      "rmse": 17.1007
+    },
+    "last": {
+      "mae": 11.1246,
+      "rmse": 15.1646
+    },
+    "prior_mean": {
+      "mae": 10.938,
+      "rmse": 15.0121
+    },
+    "linear": {
+      "mae": 11.3352,
+      "rmse": 14.7009
+    },
+    "linear_clicks": {
+      "mae": 11.3171,
+      "rmse": 14.5761
+    },
+    "boosting": {
+      "mae": 11.1759,
+      "rmse": 14.6577
+    },
+    "boosting_clicks": {
+      "mae": 10.985,
+      "rmse": 14.2871
+    },
+    "clicks_only": {
+      "mae": 12.4946,
+      "rmse": 16.0073
+    }
+  },
+  "selected": "boosting_clicks",
+  "baseline": "prior_mean",
+  "test": {
+    "median": {
+      "mae": 15.1506,
+      "rmse": 20.2214
+    },
+    "last": {
+      "mae": 13.1268,
+      "rmse": 18.5934
+    },
+    "prior_mean": {
+      "mae": 14.1944,
+      "rmse": 19.6632
+    },
+    "linear": {
+      "mae": 13.2499,
+      "rmse": 18.2907
+    },
+    "linear_clicks": {
+      "mae": 13.0478,
+      "rmse": 18.0148
+    },
+    "boosting": {
+      "mae": 13.2461,
+      "rmse": 18.3184
+    },
+    "boosting_clicks": {
+      "mae": 12.9704,
+      "rmse": 17.9696
+    },
+    "clicks_only": {
+      "mae": 14.753,
+      "rmse": 19.3773
+    }
+  },
+  "paired_mae_difference_95": [
+    -1.3004,
+    -1.15
+  ],
+  "by_course": {
+    "AAA": {
+      "rows": 1445,
+      "baseline": {
+        "mae": 8.908,
+        "rmse": 12.4263
+      },
+      "selected": {
+        "mae": 8.9445,
+        "rmse": 11.911
+      },
+      "unseen_course": {
+        "mae": 9.0271,
+        "rmse": 12.0009
+      },
+      "unseen_baseline": {
+        "mae": 8.908,
+        "rmse": 12.4263
+      }
+    },
+    "BBB": {
+      "rows": 6428,
+      "baseline": {
+        "mae": 22.0203,
+        "rmse": 28.9112
+      },
+      "selected": {
+        "mae": 18.4911,
+        "rmse": 25.9618
+      },
+      "unseen_course": {
+        "mae": 18.4304,
+        "rmse": 25.9252
+      },
+      "unseen_baseline": {
+        "mae": 22.074,
+        "rmse": 29.0718
+      }
+    },
+    "CCC": {
+      "rows": 4061,
+      "baseline": {
+        "mae": 13.4488,
+        "rmse": 18.2383
+      },
+      "selected": {
+        "mae": 13.1449,
+        "rmse": 17.2376
+      },
+      "unseen_course": {
+        "mae": 13.1449,
+        "rmse": 17.2376
+      },
+      "unseen_baseline": {
+        "mae": 13.4488,
+        "rmse": 18.2383
+      }
+    },
+    "DDD": {
+      "rows": 6445,
+      "baseline": {
+        "mae": 13.0347,
+        "rmse": 17.4469
+      },
+      "selected": {
+        "mae": 12.4299,
+        "rmse": 16.0986
+      },
+      "unseen_course": {
+        "mae": 12.7103,
+        "rmse": 16.6259
+      },
+      "unseen_baseline": {
+        "mae": 13.0347,
+        "rmse": 17.4469
+      }
+    },
+    "EEE": {
+      "rows": 3033,
+      "baseline": {
+        "mae": 13.1327,
+        "rmse": 16.2324
+      },
+      "selected": {
+        "mae": 11.8532,
+        "rmse": 14.7435
+      },
+      "unseen_course": {
+        "mae": 12.1694,
+        "rmse": 15.0911
+      },
+      "unseen_baseline": {
+        "mae": 13.4967,
+        "rmse": 16.5949
+      }
+    },
+    "FFF": {
+      "rows": 6639,
+      "baseline": {
+        "mae": 10.6308,
+        "rmse": 14.4112
+      },
+      "selected": {
+        "mae": 10.1145,
+        "rmse": 13.3834
+      },
+      "unseen_course": {
+        "mae": 10.3407,
+        "rmse": 13.5762
+      },
+      "unseen_baseline": {
+        "mae": 10.7649,
+        "rmse": 14.533
+      }
+    },
+    "GGG": {
+      "rows": 1311,
+      "baseline": {
+        "mae": 10.1625,
+        "rmse": 14.2429
+      },
+      "selected": {
+        "mae": 9.5015,
+        "rmse": 12.9025
+      },
+      "unseen_course": {
+        "mae": 9.618,
+        "rmse": 12.9675
+      },
+      "unseen_baseline": {
+        "mae": 10.1625,
+        "rmse": 14.2429
+      }
+    }
+  },
+  "test_without_prior": 12277
+}
