@@ -69,19 +69,26 @@ def activity_totals(chunks, schedule):
             .rename(columns={"sum_click": OU_ACTIVITY}))
 
 
-def load_oulad(path):
+def load_oulad_delays(path, delays):
     with verified_zip(path, OU_HASH) as archive:
         schedule = pd.read_csv(archive.open("assessments.csv"), na_values="?")
         results = pd.read_csv(archive.open("studentAssessment.csv"), na_values="?")
-        rows = assessment_rows(schedule, results)
         # The February 2014 run overlaps the October 2014 test run.
-        rows = rows.loc[rows["code_presentation"].ne("2014B")].copy()
+        schedule = schedule.loc[schedule["code_presentation"].ne("2014B")]
+        deadlines = schedule.loc[schedule["assessment_type"].eq("TMA") & schedule["date"].notna()]
+        # Feedback timing changes the marks we can use, but not the click window.
         with archive.open("studentVle.csv") as stream:
             chunks = pd.read_csv(stream, chunksize=250_000, usecols=ENTRY + ["date", "sum_click"])
-            clicks = activity_totals(chunks, rows)
-    rows = rows.merge(clicks, on=ENTRY + ["cutoff"], how="left", validate="many_to_one")
-    rows[OU_ACTIVITY] = rows[OU_ACTIVITY].fillna(0)
-    return rows
+            clicks = activity_totals(chunks, deadlines.assign(cutoff=deadlines["date"] - 7))
+    for lag in delays:
+        rows = assessment_rows(schedule, results, lag=lag)
+        rows = rows.merge(clicks, on=ENTRY + ["cutoff"], how="left", validate="many_to_one")
+        rows[OU_ACTIVITY] = rows[OU_ACTIVITY].fillna(0)
+        yield lag, rows
+
+
+def load_oulad(path):
+    return next(load_oulad_delays(path, [28]))[1]
 
 
 def chronological_parts(rows):

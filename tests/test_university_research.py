@@ -1,7 +1,11 @@
+from hashlib import sha256
+from zipfile import ZipFile
+
 import numpy as np
 import pandas as pd
 import pytest
 
+from src import university_data, university_evaluation
 from src.university_data import (
     ENTRY, FIRST_TERM, OU_ACTIVITY, PT_FEATURES, assessment_rows, activity_totals,
     chronological_parts, portalegre_rows, verified_zip,
@@ -89,3 +93,56 @@ def test_unexpected_archive_is_rejected_before_reading_records(tmp_path):
     path.write_bytes(b"other version")
     with pytest.raises(ValueError, match="SHA-256"):
         verified_zip(path, "0" * 64)
+
+
+def test_last_mark_interval_resamples_students_and_weights_submissions():
+    test = pd.DataFrame({"id_student": [1, 1, 1, 2], "score": 10})
+    model = np.array([16, 10, 10, 10])
+    last = np.array([10, 11, 12, 12])
+    # Student mean differences are +1 and -2. The pooled difference is +1/4.
+    assert university_evaluation.compare_last_mark(test, model, last) == {
+        "mae_model_minus_last": 0.25, "student_bootstrap_95": [-2, 1],
+    }
+
+
+def test_feedback_delays_rebuild_marks_labels_and_keep_the_same_test(tmp_path, monkeypatch):
+    assessments, scores, clicks = [], [], []
+    for period, dates in [("2013B", [10, 80, 150, 165]), ("2013J", [10, 290, 305]),
+                          ("2014J", [10, 40, 54])]:
+        for module in ["A", "B"]:
+            student = len(assessments) + 1
+            clicks.append([module, period, student, 32, 5])
+            for due in dates:
+                assessment = len(assessments) + 1
+                assessments.append([module, period, assessment, "TMA", due])
+                scores.append([assessment, student, due, 0, 40 + assessment])
+
+    path = tmp_path / "oulad.zip"
+    with ZipFile(path, "w") as archive:
+        for name, data, columns in [
+            ("assessments", assessments, ENTRY[:2] + ["id_assessment", "assessment_type", "date"]),
+            ("studentAssessment", scores, ["id_assessment", "id_student", "date_submitted", "is_banked", "score"]),
+            ("studentVle", clicks, ENTRY + ["date", "sum_click"]),
+        ]:
+            archive.writestr(name + ".csv", pd.DataFrame(data, columns=columns).to_csv(index=False))
+    monkeypatch.setattr(university_data, "OU_HASH", sha256(path.read_bytes()).hexdigest())
+
+    report = university_evaluation.evaluate_oulad(path)
+    assert report["primary_feedback_days"] == 28
+    expected = {14: (8, 6, 4), 28: (6, 4, 2), 42: (4, 2, 0)}
+    for delay, rows in university_data.load_oulad_delays(path, expected):
+        train, valid, test = chronological_parts(rows)
+        n_train, n_valid, n_with_prior = expected[delay]
+        assert (len(train), len(valid)) == (n_train, n_valid)
+        assert test.id_assessment.tolist() == [15, 16, 17, 18, 19, 20]
+        assert test[OU_ACTIVITY].tolist() == [0, 5, 0, 0, 5, 0]
+        summary = report["feedback_delays"][str(delay)]
+        assert summary["history"]["test"] == {"rows": 6, "with_prior": n_with_prior}
+        assert summary["history"]["train"]["rows"] == n_train
+        assert summary["history"]["validation"]["rows"] == n_valid
+        assert set(summary["test"]) == {"median", "last", "prior_mean", report["selected"]}
+        specs = university_evaluation.model_specs(
+            university_data.OU_HISTORY, {"last": "last_grade", "prior_mean": "mean_grade"}, OU_ACTIVITY)
+        predictions = predict(pd.concat([train, valid]), test, specs[report["selected"]], 100)
+        assert summary["test"][report["selected"]] == university_evaluation.metrics(test.score, predictions)
+    assert report["feedback_delays"]["28"]["paired_vs_last"] == report["paired_vs_last"]

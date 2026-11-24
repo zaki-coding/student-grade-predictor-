@@ -15,7 +15,7 @@ from threadpoolctl import threadpool_limits
 
 from src.university_data import (
     FIRST_TERM, OU_ACTIVITY, OU_HISTORY, PT_FEATURES, chronological_parts,
-    load_oulad, load_portalegre,
+    load_oulad_delays, load_portalegre,
 )
 
 SEED = 42
@@ -66,6 +66,12 @@ def paired_error_interval(rows, prediction, baseline, student):
     return np.quantile(draws, [0.025, 0.975]).round(4).tolist()
 
 
+def compare_last_mark(test, prediction, last):
+    delta = mean_absolute_error(test["score"], prediction) - mean_absolute_error(test["score"], last)
+    return {"mae_model_minus_last": round(float(delta), 4),
+            "student_bootstrap_95": paired_error_interval(test, prediction, last, "id_student")}
+
+
 def evaluate(parts, specs, maximum, course, student=None):
     train, valid, test = parts
     validation = {name: metrics(valid["score"], predict(train, valid, spec, maximum))
@@ -95,9 +101,48 @@ def evaluate(parts, specs, maximum, course, student=None):
               "test": {name: metrics(test["score"], p) for name, p in preds.items()},
               "paired_mae_difference_95": paired_error_interval(test, preds[selected], preds[baseline], student),
               "by_course": courses}
+    if student:
+        result["paired_vs_last"] = compare_last_mark(test, preds[selected], preds["last"])
     prior = "last_grade" if student else FIRST_TERM[0]
     result["test_without_prior"] = int(test[prior].isna().sum())
     return result
+
+
+def evaluate_oulad(path):
+    specs = model_specs(OU_HISTORY, {"last": "last_grade", "prior_mean": "mean_grade"}, OU_ACTIVITY)
+    tables = load_oulad_delays(path, [28, 14, 42])
+    primary_delay, primary_rows = next(tables)
+    primary_parts = chronological_parts(primary_rows)
+    report = evaluate(primary_parts, specs, 100, "code_module", "id_student")
+    selected = report["selected"]
+    methods = ["median", "last", "prior_mean", selected]
+
+    def history_counts(parts):
+        return {name: {"rows": len(part), "with_prior": int(part["prior_count"].gt(0).sum())}
+                for name, part in zip(("train", "validation", "test"), parts)}
+
+    report["primary_feedback_days"] = primary_delay
+    comparisons = {str(primary_delay): {
+        "history": history_counts(primary_parts),
+        "validation": {name: report["validation"][name] for name in methods},
+        "test": {name: report["test"][name] for name in methods},
+        "paired_vs_last": report["paired_vs_last"],
+    }}
+    for delay, rows in tables:
+        parts = chronological_parts(rows)
+        train, valid, test = parts
+        # Refit the primary recipe on the labels available under this delay.
+        development = pd.concat([train, valid])
+        predictions = {name: predict(development, test, specs[name], 100) for name in methods}
+        comparisons[str(delay)] = {
+            "history": history_counts(parts),
+            "validation": {name: metrics(valid["score"], predict(train, valid, specs[name], 100))
+                           for name in methods},
+            "test": {name: metrics(test["score"], predictions[name]) for name in methods},
+            "paired_vs_last": compare_last_mark(test, predictions[selected], predictions["last"]),
+        }
+    report["feedback_delays"] = comparisons
+    return report
 
 
 def portuguese_parts(rows):
@@ -113,9 +158,7 @@ def main():
     args = parser.parse_args()
     with threadpool_limits(limits=1):
         if args.experiment == "oulad":
-            parts = chronological_parts(load_oulad(args.archive))
-            specs = model_specs(OU_HISTORY, {"last": "last_grade", "prior_mean": "mean_grade"}, OU_ACTIVITY)
-            report = evaluate(parts, specs, 100, "code_module", "id_student")
+            report = evaluate_oulad(args.archive)
         else:
             rows, coverage = load_portalegre(args.archive)
             specs = model_specs(PT_FEATURES, {"first_term": FIRST_TERM[0]})

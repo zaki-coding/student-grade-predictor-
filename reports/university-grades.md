@@ -39,7 +39,7 @@ Errors below weight each scored submission equally. MAE is the mean absolute mis
 | Histogram gradient boosting, history and clicks | 10.99 | 14.29 | 12.97 | 17.97 |
 | Histogram gradient boosting, clicks only | 12.49 | 16.01 | 14.75 | 19.38 |
 
-Adding clicks lowered test MAE by 0.28 points for boosting. The prior mean beat every learned model on validation but deteriorated on the test presentation. The learned model's test MAE was 1.22 points lower than that validation-selected baseline (paired 95% bootstrap interval for model minus baseline, −1.30 to −1.15). Its lead over the last-mark baseline on the same test data was only 0.16. For 12,277 test submissions, the delay rule left no usable earlier mark.
+Adding clicks lowered test MAE by 0.28 points for boosting. The prior mean beat every learned model on validation but deteriorated on the test presentation. The learned model's test MAE was 1.22 points lower than that validation-selected baseline (paired 95% bootstrap interval for model minus baseline, −1.30 to −1.15). Against the last available mark, the absolute reduction in MAE was **0.1564 points out of 100** (model minus last mark −0.1564, paired 95% interval **−0.2344 to −0.0745**). Both comparisons used the same 29,362 submissions. Each of 1,000 bootstrap draws sampled 7,884 students with replacement, retaining all submissions for each sampled student and weighting each submission equally. The interval supports a small average advantage in this presentation. Even its favorable end is less than a quarter of a point against typical misses of about 13 points. For 12,277 test submissions, the delay rule left no usable earlier mark.
 
 | Test module | Submissions | Prior mean MAE | History + clicks MAE | Same model trained on other modules only, MAE |
 | --- | ---: | ---: | ---: | ---: |
@@ -52,6 +52,26 @@ Adding clicks lowered test MAE by 0.28 points for boosting. The prior mean beat 
 | GGG | 1,311 | 10.16 | 9.50 | 9.62 |
 
 For the last column we refit the selected model after excluding the test module from both development partitions. CCC was already absent from those partitions. Even within one institution, a single pooled error understates the misses in BBB. The data offer only one final presentation. Confirmed mark-release dates and another held-out presentation would make a stronger test. [Full OULAD results, including per-module RMSE](oulad-evaluation.json)
+
+### Sensitivity to feedback delay
+
+The 28-day rule remains the primary analysis. For 14 and 42 days we rebuilt the last mark, prior mean and prior count using the same strict cutoff. We also recalculated when each target label would become available for training (by day 180) or validation (by day 320), then reapplied the student exclusions. The October 2014 test submissions and their click windows were identical in all three runs. Each run refit the same primary boosting recipe on its eligible training and validation records. No delay or model was selected from the test results.
+
+| Assumed delay | Eligible training labels | Eligible validation labels | Test submissions with a prior mark | Test submissions without one |
+| --- | ---: | ---: | ---: | ---: |
+| 14 days | 13,495 | 24,734 | 20,946 (71.3%) | 8,416 |
+| **28 days (primary)** | **11,990** | **24,734** | **17,085 (58.2%)** | **12,277** |
+| 42 days | 11,436 | 24,734 | 15,881 (54.1%) | 13,481 |
+
+A longer delay moved more training labels past day 180. Rechecking day 320 gave the same validation count at all three delays, although the histories available for those predictions changed. For submissions with no earlier mark, the last-mark and prior-mean rules both fell back to the development target median.
+
+| Delay | Boosting MAE / RMSE | Last mark MAE / RMSE | Prior mean MAE / RMSE | Median MAE / RMSE | MAE difference, boosting minus last mark (95% interval) |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 14 days | 12.96 / 18.02 | 14.29 / 21.09 | 15.35 / 22.04 | 15.15 / 20.22 | −1.33 (−1.41 to −1.24) |
+| **28 days (primary)** | **12.97 / 17.97** | **13.13 / 18.59** | **14.19 / 19.66** | **15.15 / 20.22** | **−0.16 (−0.23 to −0.07)** |
+| 42 days | 13.77 / 18.70 | 13.82 / 19.39 | 15.10 / 20.66 | 15.15 / 20.22 | −0.06 (−0.16 to +0.04) |
+
+At 14 days, boosting's MAE was nearly identical to its primary result. The larger advantage came mainly from worse last-mark predictions. At 42 days, boosting itself missed by about 0.80 points more than at 28 days, and its interval against the last mark included zero. Changing the delay affects both the training population and the marks available for prediction, so these comparisons cannot isolate the effect of receiving feedback sooner. Actual release dates remain unknown. The intervals describe student sampling within a single presentation under each assumed delay.
 
 ## Portalegre semester averages
 
