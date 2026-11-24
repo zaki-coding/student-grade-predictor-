@@ -87,7 +87,7 @@ def _priorities(summary, targets, today):
         highest_weight = max(due_soon, key=lambda item: item["weight"])
         st.caption("Highest-weight assessment due within seven days")
         deadline_table([highest_weight], "dashboard_heavy")
-    if not (unreachable or demands or due_soon):
+    if not (unreachable or demands or due_soon or summary["overdue"]):
         st.caption("No outstanding target or dated assessment needs attention here.")
 
 
